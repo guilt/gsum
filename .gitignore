@@ -1,0 +1,72 @@
+# Go build artifacts
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+bin/
+
+# Go module cache
+vendor/
+go.sum
+
+# Test and coverage files
+*.test
+*.out
+coverage.txt
+
+# Editor and IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS-generated files
+.DS_Store
+Thumbs.db
+
+# Log files
+*.log
+
+# Example file for testing
+example.txt
+
+# Temporary files
+tmp/
+temp/
+
+# Documentation build artifacts
+docs/_build/
+
+# gsum hash files
+*.crc32
+*.cksum
+*.md4
+*.md5
+*.sha1
+*.sha256
+*.sha512
+*.sha3-256
+*.shake128
+*.shake256
+*.blake2b
+*.blake3
+*.hmac-sha1
+*.hmac-sha256
+*.hmac-sha512
+*.chacha20-poly1305
+*.xxhash
+*.siphash
+*.cityhash
+*.kangaroo12
+
+# Common checksum and signature files
+*SUM
+*SUMS
+*.asc
+*.sig
+*.gpg
+*.sum
+*.sums
+*.checksum
