@@ -306,7 +306,7 @@ func init() {
 			AcceptsFile: func(fileName string) bool {
 				return strings.ToLower(filepath.Base(fileName)) == "chacha20-poly1305sum" || strings.ToLower(filepath.Ext(fileName)) == ".chacha20-poly1305"
 			},
-			ParseChecksumLine: chacha.ParseChecksumLine,
+			ParseChecksumLine: std.ParseChecksumLine,
 		},
 		common.XXHASH: {
 			Algo:      common.XXHASH,

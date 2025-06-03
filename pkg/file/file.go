@@ -117,6 +117,25 @@ func (f *FileAndRangeSpec) Parse(s string) error {
 	return nil
 }
 
+func (f FileAndRangeSpec) ToBytes(fileSize int64) (start, end int64, err error) {
+	start = f.Start
+	end = f.End
+	if f.IsPercent {
+		start = int64(float64(fileSize) * float64(f.Start) / 10000)
+		if f.End == -1 {
+			end = fileSize
+		} else {
+			end = int64(float64(fileSize) * float64(f.End) / 10000)
+		}
+	} else if f.End == -1 {
+		end = fileSize
+	}
+	if start >= end || start < 0 || end <= 0 {
+		return 0, 0, fmt.Errorf("%d-%d", start, end)
+	}
+	return start, end, nil
+}
+
 func ParseFilePath(path string) (FileAndRangeSpec, error) {
 	var f FileAndRangeSpec
 	if err := f.Parse(path); err != nil {

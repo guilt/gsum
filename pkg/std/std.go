@@ -36,43 +36,28 @@ func Compute(reader io.Reader, key string, hashFunc func(key string) (hash.Hash,
 			return "", fmt.Errorf("cannot hash empty file")
 		}
 
-		start := rs.Start
-		end := rs.End
-		if rs.IsPercent {
-			start = int64(float64(fileSize) * float64(rs.Start) / 10000)
-			if rs.End == -1 {
-				end = fileSize
-			} else {
-				end = int64(float64(fileSize) * float64(rs.End) / 10000)
-			}
-		} else if rs.End == -1 {
-			end = fileSize
-		}
-
-		logger.Debugf("std.Compute: fileSize=%d, range=%d-%d", fileSize, start, end)
-		if start >= end || start < 0 || end <= 0 {
-			return "", fmt.Errorf("invalid range: %d-%d", start, end)
+		start, end, err := rs.ToBytes(fileSize)
+		if err != nil {
+			return "", fmt.Errorf("invalid range: %s", err)
 		}
 
 		if _, err := file.Seek(start, io.SeekStart); err != nil {
 			return "", fmt.Errorf("cannot seek to start: %s", err)
 		}
 		reader = io.LimitReader(file, end-start)
-	} else {
-		logger.Debugf("std.Compute: hashing full file")
+		logger.Debugf("Computing hash: range=%d-%d", start, end)
 	}
 
 	if _, err := io.Copy(h, reader); err != nil {
-		return "", fmt.Errorf("error hashing data: %s", err)
+		return "", fmt.Errorf("hashing error: %s", err)
 	}
 	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
 func ParseChecksumLine(line string) (hashValue string, fileAndRange gfile.FileAndRangeSpec, byteCount int64, err error) {
-	logger.Debugf("Parsing checksum line: %s", line)
 	parts := strings.Fields(line)
 	if len(parts) < 2 {
-		return "", gfile.FileAndRangeSpec{}, 0, fmt.Errorf("invalid checksum format: %s", line)
+		return "", gfile.FileAndRangeSpec{}, 0, fmt.Errorf("invalid checksum: %s", line)
 	}
 
 	hashValue = parts[0]
@@ -86,7 +71,8 @@ func ParseChecksumLine(line string) (hashValue string, fileAndRange gfile.FileAn
 
 	filePath := strings.Join(parts[fileStart:], " ")
 	if err := fileAndRange.Parse(filePath); err != nil {
-		return "", gfile.FileAndRangeSpec{}, 0, fmt.Errorf("invalid file path: %s", filePath)
+		return "", gfile.FileAndRangeSpec{}, 0, fmt.Errorf("invalid file: %s", filePath)
 	}
+	logger.Debugf("Parsed checksum: hash=%s, file=%s", hashValue, filePath)
 	return hashValue, fileAndRange, byteCount, nil
 }

@@ -1,6 +1,6 @@
 # gsum
 
-`gsum` is a versatile command-line hashing tool written in Go, supporting a wide range of cryptographic and non-cryptographic hash algorithms. It offers advanced features like incremental hashing, GPG signing/verification, progress bars, and compatibility with DOS environments, making it ideal for developers, security enthusiasts, and system administrators.
+`gsum` is a versatile command-line hashing tool written in Go, supporting a wide range of cryptographic and non-cryptographic hash algorithms. It offers advanced features like incremental hashing, GPG signing/verification, progress bars, and compatibility with existing Unix and Windows environments, making it ideal for developers, security enthusiasts, and system administrators.
 
 ## Features
 
