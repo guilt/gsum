@@ -1,0 +1,143 @@
+name: Build and Release Go Binaries
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        platform:
+          - linux-amd64
+          - linux-arm64
+          - linux-riscv64
+          - linux-arm
+          - linux-386
+          - linux-ppc64le
+          - linux-s390x
+          - windows-amd64
+          - windows-arm64
+          - windows-386
+          - darwin-amd64
+          - darwin-arm64
+          - freebsd-amd64
+          - freebsd-arm64
+          - freebsd-arm
+          - freebsd-386
+          - openbsd-amd64
+          - openbsd-arm64
+          - openbsd-arm
+          - openbsd-386
+          - netbsd-amd64
+          - netbsd-arm64
+          - netbsd-arm
+          - netbsd-386
+          - solaris-amd64
+          - dragonfly-amd64
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.3'
+
+      - name: Install UPX
+        run: sudo apt-get update && sudo apt-get install -y upx-ucl
+
+      - name: Tidy dependencies
+        run: go mod tidy
+
+      - name: Parse platform
+        id: parse
+        run: |
+          echo "os=$(echo ${{ matrix.platform }} | awk -F'-' '{print $1}')" >> $GITHUB_OUTPUT
+          echo "arch=$(echo ${{ matrix.platform }} | awk -F'-' '{print $2}')" >> $GITHUB_OUTPUT
+          echo "exe=$([[ ${{ matrix.platform }} == windows* ]] && echo .exe || echo '')" >> $GITHUB_OUTPUT
+
+      - name: Build gsum for local use
+        if: matrix.platform == 'linux-amd64'
+        run: |
+          CGO_ENABLED=0 go build -ldflags "-s -w" -o gsum-local ./cmd/gsum/
+
+      - name: Build and compress binary for distribution
+        run: |
+          mkdir -p dist
+          CGO_ENABLED=0 GOOS=${{ steps.parse.outputs.os }} GOARCH=${{ steps.parse.outputs.arch }} go build -ldflags "-s -w" -o dist/gsum-${{ matrix.platform }}${{ steps.parse.outputs.exe }} ./cmd/gsum/
+          if [[ "${{ matrix.platform }}" != *"riscv64"* && "${{ matrix.platform }}" != *"ppc64le"* && "${{ matrix.platform }}" != *"s390x"* ]]; then
+            upx --best dist/gsum-${{ matrix.platform }}${{ steps.parse.outputs.exe }} || true
+          fi
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: binaries-${{ matrix.platform }}
+          path: dist/gsum-${{ matrix.platform }}*
+
+  checksum:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.3'
+
+      - name: Tidy dependencies
+        run: go mod tidy
+
+      - name: Build gsum for checksum
+        run: |
+          CGO_ENABLED=0 go build -ldflags "-s -w" -o gsum-local ./cmd/gsum/
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: binaries-*
+          path: dist
+          merge-multiple: true
+
+      - name: Create checksums with gsum
+        run: |
+          cd dist
+          ../gsum-local gsum-* > checksums.txt
+
+      - name: Upload checksums
+        uses: actions/upload-artifact@v4
+        with:
+          name: checksums
+          path: dist/checksums.txt
+
+  release:
+    needs: [build, checksum]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download binaries
+        uses: actions/download-artifact@v4
+        with:
+          pattern: binaries-*
+          path: dist
+          merge-multiple: true
+
+      - name: Download checksums
+        uses: actions/download-artifact@v4
+        with:
+          name: checksums
+          path: dist
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/gsum-*
+            dist/checksums.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -6,6 +6,9 @@
 *.dylib
 bin/
 
+# Local Go binaries
+*-local*
+
 # Go module cache
 vendor/
 go.sum
