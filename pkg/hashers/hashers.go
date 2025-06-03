@@ -24,6 +24,7 @@ import (
 	"github.com/guilt/gsum/pkg/bsdcksum"
 	"github.com/guilt/gsum/pkg/chacha"
 	"github.com/guilt/gsum/pkg/common"
+	gfile "github.com/guilt/gsum/pkg/file"
 	"github.com/guilt/gsum/pkg/ktwelve"
 	"github.com/guilt/gsum/pkg/log"
 	"github.com/guilt/gsum/pkg/shake"
@@ -34,10 +35,8 @@ import (
 	"github.com/zentures/cityhash"
 )
 
-// logger is the package-level logger for debug and error messages.
 var logger = log.NewLogger()
 
-// init populates the global hashers map.
 func init() {
 	hashers := map[common.Algorithm]common.Hasher{
 		common.CRC32: {
@@ -45,8 +44,8 @@ func init() {
 			Name:      "crc32",
 			Extension: ".crc32",
 			Keyed:     false,
-			Compute: func(reader io.Reader, rs common.RangeSpec, key string) (string, error) {
-				return std.Compute(reader, rs, key, func(_ string) (hash.Hash, error) { return crc32.NewIEEE(), nil })
+			Compute: func(reader io.Reader, key string, rs gfile.FileAndRangeSpec) (string, error) {
+				return std.Compute(reader, key, func(_ string) (hash.Hash, error) { return crc32.NewIEEE(), nil }, rs)
 			},
 			OutputLen: 8,
 			Validate:  func(_ string) error { return nil },
@@ -60,10 +59,10 @@ func init() {
 			Name:      "bsd-cksum",
 			Extension: ".cksum",
 			Keyed:     false,
-			Compute: func(reader io.Reader, rs common.RangeSpec, key string) (string, error) {
-				return std.Compute(reader, rs, key, func(_ string) (hash.Hash, error) {
+			Compute: func(reader io.Reader, key string, rs gfile.FileAndRangeSpec) (string, error) {
+				return std.Compute(reader, key, func(_ string) (hash.Hash, error) {
 					return crc32.New(crc32.MakeTable(crc32.Castagnoli)), nil
-				})
+				}, rs)
 			},
 			OutputLen: 8,
 			Validate:  func(_ string) error { return nil },
@@ -77,8 +76,8 @@ func init() {
 			Name:      "md4",
 			Extension: ".md4",
 			Keyed:     false,
-			Compute: func(reader io.Reader, rs common.RangeSpec, key string) (string, error) {
-				return std.Compute(reader, rs, key, func(_ string) (hash.Hash, error) { return md4.New(), nil })
+			Compute: func(reader io.Reader, key string, rs gfile.FileAndRangeSpec) (string, error) {
+				return std.Compute(reader, key, func(_ string) (hash.Hash, error) { return md4.New(), nil }, rs)
 			},
 			OutputLen: 32,
 			Validate:  func(_ string) error { return nil },
@@ -92,8 +91,8 @@ func init() {
 			Name:      "md5",
 			Extension: ".md5",
 			Keyed:     false,
-			Compute: func(reader io.Reader, rs common.RangeSpec, key string) (string, error) {
-				return std.Compute(reader, rs, key, func(_ string) (hash.Hash, error) { return md5.New(), nil })
+			Compute: func(reader io.Reader, key string, rs gfile.FileAndRangeSpec) (string, error) {
+				return std.Compute(reader, key, func(_ string) (hash.Hash, error) { return md5.New(), nil }, rs)
 			},
 			OutputLen: 32,
 			Validate:  func(_ string) error { return nil },
@@ -107,8 +106,8 @@ func init() {
 			Name:      "sha1",
 			Extension: ".sha1",
 			Keyed:     false,
-			Compute: func(reader io.Reader, rs common.RangeSpec, key string) (string, error) {
-				return std.Compute(reader, rs, key, func(_ string) (hash.Hash, error) { return sha1.New(), nil })
+			Compute: func(reader io.Reader, key string, rs gfile.FileAndRangeSpec) (string, error) {
+				return std.Compute(reader, key, func(_ string) (hash.Hash, error) { return sha1.New(), nil }, rs)
 			},
 			OutputLen: 40,
 			Validate:  func(_ string) error { return nil },
@@ -122,8 +121,8 @@ func init() {
 			Name:      "sha256",
 			Extension: ".sha256",
 			Keyed:     false,
-			Compute: func(reader io.Reader, rs common.RangeSpec, key string) (string, error) {
-				return std.Compute(reader, rs, key, func(_ string) (hash.Hash, error) { return sha256.New(), nil })
+			Compute: func(reader io.Reader, key string, rs gfile.FileAndRangeSpec) (string, error) {
+				return std.Compute(reader, key, func(_ string) (hash.Hash, error) { return sha256.New(), nil }, rs)
 			},
 			OutputLen: 64,
 			Validate:  func(_ string) error { return nil },
@@ -137,8 +136,8 @@ func init() {
 			Name:      "sha512",
 			Extension: ".sha512",
 			Keyed:     false,
-			Compute: func(reader io.Reader, rs common.RangeSpec, key string) (string, error) {
-				return std.Compute(reader, rs, key, func(_ string) (hash.Hash, error) { return sha512.New(), nil })
+			Compute: func(reader io.Reader, key string, rs gfile.FileAndRangeSpec) (string, error) {
+				return std.Compute(reader, key, func(_ string) (hash.Hash, error) { return sha512.New(), nil }, rs)
 			},
 			OutputLen: 128,
 			Validate:  func(_ string) error { return nil },
@@ -152,8 +151,8 @@ func init() {
 			Name:      "sha3-256",
 			Extension: ".sha3-256",
 			Keyed:     false,
-			Compute: func(reader io.Reader, rs common.RangeSpec, key string) (string, error) {
-				return std.Compute(reader, rs, key, func(_ string) (hash.Hash, error) { return sha3.New256(), nil })
+			Compute: func(reader io.Reader, key string, rs gfile.FileAndRangeSpec) (string, error) {
+				return std.Compute(reader, key, func(_ string) (hash.Hash, error) { return sha3.New256(), nil }, rs)
 			},
 			OutputLen: 64,
 			Validate:  func(_ string) error { return nil },
@@ -167,8 +166,8 @@ func init() {
 			Name:      "shake128",
 			Extension: ".shake128",
 			Keyed:     false,
-			Compute: func(reader io.Reader, rs common.RangeSpec, key string) (string, error) {
-				return shake.Compute(reader, rs, key, func(_ string) (hash.Hash, error) { return sha3.NewShake128(), nil })
+			Compute: func(reader io.Reader, key string, rs gfile.FileAndRangeSpec) (string, error) {
+				return shake.Compute(reader, key, func(_ string) (hash.Hash, error) { return sha3.NewShake128(), nil }, rs)
 			},
 			OutputLen: 64,
 			Validate:  func(_ string) error { return nil },
@@ -182,8 +181,8 @@ func init() {
 			Name:      "shake256",
 			Extension: ".shake256",
 			Keyed:     false,
-			Compute: func(reader io.Reader, rs common.RangeSpec, key string) (string, error) {
-				return shake.Compute(reader, rs, key, func(_ string) (hash.Hash, error) { return sha3.NewShake256(), nil })
+			Compute: func(reader io.Reader, key string, rs gfile.FileAndRangeSpec) (string, error) {
+				return shake.Compute(reader, key, func(_ string) (hash.Hash, error) { return sha3.NewShake256(), nil }, rs)
 			},
 			OutputLen: 64,
 			Validate:  func(_ string) error { return nil },
@@ -197,11 +196,11 @@ func init() {
 			Name:      "blake2b",
 			Extension: ".blake2b",
 			Keyed:     false,
-			Compute: func(reader io.Reader, rs common.RangeSpec, key string) (string, error) {
-				return std.Compute(reader, rs, key, func(_ string) (hash.Hash, error) {
+			Compute: func(reader io.Reader, key string, rs gfile.FileAndRangeSpec) (string, error) {
+				return std.Compute(reader, key, func(_ string) (hash.Hash, error) {
 					h, err := blake2b.New256(nil)
 					return h, err
-				})
+				}, rs)
 			},
 			OutputLen: 64,
 			Validate:  func(_ string) error { return nil },
@@ -215,8 +214,8 @@ func init() {
 			Name:      "blake3",
 			Extension: ".blake3",
 			Keyed:     false,
-			Compute: func(reader io.Reader, rs common.RangeSpec, key string) (string, error) {
-				return std.Compute(reader, rs, key, func(_ string) (hash.Hash, error) { return blake3.New(), nil })
+			Compute: func(reader io.Reader, key string, rs gfile.FileAndRangeSpec) (string, error) {
+				return std.Compute(reader, key, func(_ string) (hash.Hash, error) { return blake3.New(), nil }, rs)
 			},
 			OutputLen: 64,
 			Validate:  func(_ string) error { return nil },
@@ -230,10 +229,10 @@ func init() {
 			Name:      "hmac-sha1",
 			Extension: ".hmac-sha1",
 			Keyed:     true,
-			Compute: func(reader io.Reader, rs common.RangeSpec, key string) (string, error) {
-				return std.Compute(reader, rs, key, func(key string) (hash.Hash, error) {
+			Compute: func(reader io.Reader, key string, rs gfile.FileAndRangeSpec) (string, error) {
+				return std.Compute(reader, key, func(key string) (hash.Hash, error) {
 					return hmac.New(sha1.New, []byte(key)), nil
-				})
+				}, rs)
 			},
 			OutputLen: 40,
 			Validate: func(key string) error {
@@ -252,10 +251,10 @@ func init() {
 			Name:      "hmac-sha256",
 			Extension: ".hmac-sha256",
 			Keyed:     true,
-			Compute: func(reader io.Reader, rs common.RangeSpec, key string) (string, error) {
-				return std.Compute(reader, rs, key, func(key string) (hash.Hash, error) {
+			Compute: func(reader io.Reader, key string, rs gfile.FileAndRangeSpec) (string, error) {
+				return std.Compute(reader, key, func(key string) (hash.Hash, error) {
 					return hmac.New(sha256.New, []byte(key)), nil
-				})
+				}, rs)
 			},
 			OutputLen: 64,
 			Validate: func(key string) error {
@@ -274,10 +273,10 @@ func init() {
 			Name:      "hmac-sha512",
 			Extension: ".hmac-sha512",
 			Keyed:     true,
-			Compute: func(reader io.Reader, rs common.RangeSpec, key string) (string, error) {
-				return std.Compute(reader, rs, key, func(key string) (hash.Hash, error) {
+			Compute: func(reader io.Reader, key string, rs gfile.FileAndRangeSpec) (string, error) {
+				return std.Compute(reader, key, func(key string) (hash.Hash, error) {
 					return hmac.New(sha512.New, []byte(key)), nil
-				})
+				}, rs)
 			},
 			OutputLen: 128,
 			Validate: func(key string) error {
@@ -297,7 +296,7 @@ func init() {
 			Extension: ".chacha20-poly1305",
 			Keyed:     true,
 			Compute:   chacha.Compute,
-			OutputLen: 32, // Tag length (nonce is separate)
+			OutputLen: 32,
 			Validate: func(key string) error {
 				if len(key) < 32 {
 					return fmt.Errorf("chacha20-poly1305 requires a 32-byte key")
@@ -314,8 +313,8 @@ func init() {
 			Name:      "xxhash",
 			Extension: ".xxhash",
 			Keyed:     false,
-			Compute: func(reader io.Reader, rs common.RangeSpec, key string) (string, error) {
-				return std.Compute(reader, rs, key, func(_ string) (hash.Hash, error) { return xxhash.New(), nil })
+			Compute: func(reader io.Reader, key string, rs gfile.FileAndRangeSpec) (string, error) {
+				return std.Compute(reader, key, func(_ string) (hash.Hash, error) { return xxhash.New(), nil }, rs)
 			},
 			OutputLen: 16,
 			Validate:  func(_ string) error { return nil },
@@ -329,7 +328,7 @@ func init() {
 			Name:      "siphash",
 			Extension: ".siphash",
 			Keyed:     true,
-			Compute:   siphash.Compute,
+			Compute:   siphash.ComputeHash,
 			OutputLen: 16,
 			Validate: func(key string) error {
 				if len(key) != 16 {
@@ -347,8 +346,8 @@ func init() {
 			Name:      "cityhash",
 			Extension: ".cityhash",
 			Keyed:     false,
-			Compute: func(reader io.Reader, rs common.RangeSpec, key string) (string, error) {
-				return std.Compute(reader, rs, key, func(_ string) (hash.Hash, error) { return cityhash.New64(), nil })
+			Compute: func(reader io.Reader, key string, rs gfile.FileAndRangeSpec) (string, error) {
+				return std.Compute(reader, key, func(_ string) (hash.Hash, error) { return cityhash.New64(), nil }, rs)
 			},
 			OutputLen: 16,
 			Validate:  func(_ string) error { return nil },
@@ -362,7 +361,7 @@ func init() {
 			Name:      "kangaroo12",
 			Extension: ".kangaroo12",
 			Keyed:     false,
-			Compute:   ktwelve.Compute,
+			Compute:   ktwelve.ComputeHash,
 			OutputLen: 64,
 			Validate:  func(_ string) error { return nil },
 			AcceptsFile: func(fileName string) bool {
@@ -375,7 +374,7 @@ func init() {
 			Name:      "streebog256",
 			Extension: ".streebog256",
 			Keyed:     false,
-			Compute:   streebog.Compute,
+			Compute:   streebog.ComputeHash,
 			OutputLen: 64,
 			Validate:  func(_ string) error { return nil },
 			AcceptsFile: func(fileName string) bool {
@@ -388,7 +387,7 @@ func init() {
 			Name:      "streebog512",
 			Extension: ".streebog512",
 			Keyed:     false,
-			Compute:   streebog.Compute,
+			Compute:   streebog.ComputeHash,
 			OutputLen: 128,
 			Validate:  func(_ string) error { return nil },
 			AcceptsFile: func(fileName string) bool {
@@ -403,13 +402,12 @@ func init() {
 	}
 }
 
-// GetHashes reads hash files and returns a map of file paths to hash values.
 func GetHashes(h common.Hasher, hashFiles []string) map[string]string {
 	hashes := make(map[string]string)
 	for _, hashFile := range hashFiles {
 		file, err := os.Open(hashFile)
 		if err != nil {
-			logger.Errorf("Error opening hash file: file=%s, error=%v", hashFile, err)
+			logger.Errorf("Error opening hash file: file=%s, error=%s", hashFile, err)
 			os.Exit(1)
 		}
 		defer file.Close()
@@ -417,18 +415,18 @@ func GetHashes(h common.Hasher, hashFiles []string) map[string]string {
 		scanner := bufio.NewScanner(file)
 		for scanner.Scan() {
 			line := strings.TrimSpace(scanner.Text())
-			if line == "" {
+			if line == "" || strings.HasPrefix(line, "#") {
 				continue
 			}
-			hashValue, filePath, _, err := h.ParseChecksumLine(line)
+			hashValue, fileAndRange, _, err := h.ParseChecksumLine(line)
 			if err != nil {
-				logger.Errorf("Invalid checksum line: file=%s, line=%s, error=%v", hashFile, line, err)
+				logger.Errorf("Invalid checksum line: file=%s, line=%s, error=%s", hashFile, line, err)
 				os.Exit(1)
 			}
-			hashes[filePath] = hashValue
+			hashes[fileAndRange.FilePath] = hashValue
 		}
 		if err := scanner.Err(); err != nil {
-			logger.Errorf("Error reading hash file: file=%s, error=%v", hashFile, err)
+			logger.Errorf("Error reading hash file: file=%s, error=%s", hashFile, err)
 			os.Exit(1)
 		}
 	}

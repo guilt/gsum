@@ -24,32 +24,50 @@ go install github.com/guilt/gsum/cmd/gsum@latest
 
 Run `gsum` with various flags to compute or verify hashes. Below are some examples:
 
-### Compute a Hash
-Hash a file using KangarooTwelve:
+### Compute a Hash and Verify
+
+Hash a file (default is SHA256):
 ```shell
-gsum -algo=kangaroo12 -progress example.txt
+gsum example.txt
 ```
 
-Hash a specific range (10%-20%) of a file:
+Verify a file:
 ```shell
-gsum -algo=kangaroo12 -progress example.txt#10%-20%
+gsum -verify example.txt.sha256 example.txt
+```
+
+### Advanced Usages
+
+Hash a file and show a progress bar:
+```shell
+gsum -progress example.txt
+```
+
+Hash a file using Kangaroo12:
+```shell
+gsum -algo=kangaroo12 example.txt
 ```
 
 Use SipHash with a 16-byte key:
 ```shell
-gsum -algo=siphash -key=1234567890123456 -progress example.txt
+gsum -algo=siphash -key=1234567890123456 example.txt
 ```
 
-### Incremental Hashing
+Hash a specific range (10%-20%) of a file:
+```shell
+gsum -progress example.txt#10%-20%
+```
+
 Compute hashes for 10% increments of a file:
 ```shell
-gsum -algo=sha256 -increment=10% -progress example.txt
+gsum -algo=sha1 -increment=10% -progress example.txt
 ```
 
-### Verify a Hash
-Verify a hash against a provided value:
+### Hash Verification
+
+Verify a hash against a provided value as argument:
 ```shell
-gsum -verify=<hash_value> example.txt
+gsum -verify 80a3721188e40218b08b26776bc53bdae81e4784fff71d71450a197319cba113 example.txt
 ```
 
 Verify checksums from a file:
@@ -58,9 +76,10 @@ gsum -verify=SHA256SUM example.txt
 ```
 
 ### GPG Signing and Verification
+
 Sign a hash file with GPG:
 ```shell
-gsum -algo=sha256 -output=SHA256SUM -gpg=SHA256SUM.asc example.txt
+gsum -output=SHA256SUM -gpg=SHA256SUM.asc example.txt
 ```
 
 Verify a GPG-signed hash file:
@@ -69,6 +88,7 @@ gsum -verify=SHA256SUM -gpg=SHA256SUM.asc example.txt
 ```
 
 ### Full Help
+
 List all supported algorithms and flags:
 ```shell
 gsum -help
@@ -89,7 +109,7 @@ gsum -help
 - **SipHash**: Keyed hash for hash tables (16-byte key).
 - **CityHash**: Non-cryptographic hash for strings.
 - **Kangaroo12**: High-performance Keccak-based hash.
-- **Streebog**: A specific hash used in Russia.
+- **Streebog**: A specific hash used in Russia **To be Implemented**
 
 ## Development
 
@@ -97,15 +117,15 @@ To contribute or extend `gsum`:
 
 1. **Add a New Algorithm**:
    - Create a new package under `pkg/` (e.g., `pkg/newalgo`).
-   - Implement a `Compute` function with the signature:
+   - Implement a `ComputeHash` function with the signature:
      ```go
-     func Compute(reader io.Reader, rs common.RangeSpec, key string) (string, error)
+     func ComputeHash(reader io.Reader, key string, rs gfile.FileAndRangeSpec) (string, error)
      ```
    - Register the algorithm in `pkg/hashers/hashers.go`.
 
-2. **Build for an OS, such as Linux**:
+2. **Build for a specific OS and architecture, such as Linux amd64**:
    ```shell
-   GOOS=linux go build -o gsum.exe ./cmd/gsum
+   GOOS=linux GOARCH=amd64 go build -o gsum-linux-amd64 ./cmd/gsum
    ```
 3. **Run Tests**:
    (Tests TBD - Contributions welcome!)
