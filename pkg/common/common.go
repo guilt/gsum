@@ -3,6 +3,7 @@ package common
 import (
 	"fmt"
 	"io"
+	"sort"
 	"strings"
 
 	gfile "github.com/guilt/gsum/pkg/file"
@@ -52,6 +53,19 @@ const (
 	KANGAROOTWELVE
 	STREEBOG256
 	STREEBOG512
+	SHA224
+	SHA384
+	SHA512_224
+	SHA512_256
+	SHA3_224
+	SHA3_384
+	SHA3_512
+	RIPEMD160
+	HMACMD5
+	HMACRIPEMD160
+	HMACBLAKE2B
+	BLAKE2S
+	ADLER32
 )
 
 type Hasher struct {
@@ -86,6 +100,7 @@ func GetAllHasherNames() []string {
 	for _, h := range hashers {
 		names = append(names, h.Name)
 	}
+	sort.Strings(names)
 	return names
 }
 

@@ -94,22 +94,42 @@ List all supported algorithms and flags:
 gsum -help
 ```
 
-## Supported Algorithms
+### Supported Algorithms
 
-- **CRC32**: Fast, non-cryptographic checksum.
-- **BSD-CKSUM**: Castagnoli polynomial-based checksum.
-- **MD4/MD5**: Legacy cryptographic hashes.
-- **SHA1/SHA256/SHA512**: Secure Hash Algorithms.
-- **SHA3-256**: Keccak-based cryptographic hash.
-- **SHAKE128/SHAKE256**: Extendable-output functions.
-- **BLAKE2B/BLAKE3**: High-speed cryptographic hashes.
-- **HMAC-SHA1/HMAC-SHA256/HMAC-SHA512**: Keyed HMAC variants.
-- **ChaCha20-Poly1305**: Authenticated encryption (32-byte key).
-- **XXHash**: Non-cryptographic, high-speed hash.
-- **SipHash**: Keyed hash for hash tables (16-byte key).
-- **CityHash**: Non-cryptographic hash for strings.
+- **Adler-32**: Lightweight non-cryptographic checksum for data integrity.
+- **BLAKE2B**: High-speed cryptographic hash for security and performance.
+- **BLAKE2S**: Compact BLAKE2 variant for embedded systems.
+- **BLAKE3**: Ultra-fast cryptographic hash for modern applications.
+- **BSD-CKSUM**: Castagnoli polynomial-based checksum for data integrity.
+- **ChaCha20-Poly1305**: Authenticated encryption with 32-byte key.
+- **CityHash**: Non-cryptographic hash optimized for strings.
+- **CRC32**: Fast, non-cryptographic checksum for error detection.
+- **HMAC-BLAKE2B**: Keyed HMAC using BLAKE2B for high-speed authentication.
+- **HMAC-MD5**: Keyed HMAC using MD5 for legacy authentication.
+- **HMAC-RIPEMD160**: Keyed HMAC using RIPEMD160 for OpenPGP authentication.
+- **HMAC-SHA1**: Keyed HMAC using SHA1 for authentication.
+- **HMAC-SHA256**: Keyed HMAC using SHA256 for secure authentication.
+- **HMAC-SHA512**: Keyed HMAC using SHA512 for high-security authentication.
 - **Kangaroo12**: High-performance Keccak-based hash.
+- **MD4**: Legacy cryptographic hash, less secure.
+- **MD5**: Legacy cryptographic hash, widely used but vulnerable.
+- **RIPEMD-160**: 160-bit cryptographic hash for OpenPGP and certificates.
+- **SHA1**: Legacy Secure Hash Algorithm, used in older systems.
+- **SHA224**: NIST-standard 224-bit SHA-2 hash for signatures and certificates.
+- **SHA256**: Secure 256-bit SHA-2 hash for modern cryptography.
+- **SHA3-224**: 224-bit SHA-3 hash, post-quantum secure for signatures.
+- **SHA3-256**: Keccak-based 256-bit cryptographic hash.
+- **SHA3-384**: 384-bit SHA-3 hash for high-security applications.
+- **SHA3-512**: 512-bit SHA-3 hash for maximum security.
+- **SHA384**: NIST-standard 384-bit SHA-2 hash for high-security applications.
+- **SHA512**: Secure 512-bit SHA-2 hash for cryptography.
+- **SHA512-224**: Truncated 224-bit SHA-2 hash for compact signatures.
+- **SHA512-256**: Truncated 256-bit SHA-2 hash for efficiency and security.
+- **SHAKE128**: Extendable-output function for flexible hashing.
+- **SHAKE256**: Extendable-output function for secure hashing.
+- **SipHash**: Keyed hash for hash tables with 16-byte key.
 - **Streebog**: Russian cryptographic hash for signatures and certificates.
+- **XXHash**: Non-cryptographic, high-speed hash for checksums.
 
 ## Development
 

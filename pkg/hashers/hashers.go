@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"hash"
+	"hash/adler32"
 	"hash/crc32"
 	"io"
 	"os"
@@ -17,7 +18,9 @@ import (
 	"crypto/sha512"
 
 	"golang.org/x/crypto/blake2b"
+	"golang.org/x/crypto/blake2s"
 	"golang.org/x/crypto/md4"
+	"golang.org/x/crypto/ripemd160"
 	"golang.org/x/crypto/sha3"
 
 	"github.com/cespare/xxhash"
@@ -116,6 +119,21 @@ func init() {
 			},
 			ParseChecksumLine: std.ParseChecksumLine,
 		},
+		common.SHA224: {
+			Algo:      common.SHA224,
+			Name:      "sha224",
+			Extension: ".sha224",
+			Keyed:     false,
+			Compute: func(reader io.Reader, key string, rs gfile.FileAndRangeSpec) (string, error) {
+				return std.Compute(reader, key, func(_ string) (hash.Hash, error) { return sha256.New224(), nil }, rs)
+			},
+			OutputLen: 56,
+			Validate:  func(_ string) error { return nil },
+			AcceptsFile: func(fileName string) bool {
+				return strings.ToLower(filepath.Base(fileName)) == "sha224sum" || strings.ToLower(filepath.Ext(fileName)) == ".sha224"
+			},
+			ParseChecksumLine: std.ParseChecksumLine,
+		},
 		common.SHA256: {
 			Algo:      common.SHA256,
 			Name:      "sha256",
@@ -128,6 +146,21 @@ func init() {
 			Validate:  func(_ string) error { return nil },
 			AcceptsFile: func(fileName string) bool {
 				return strings.ToLower(filepath.Base(fileName)) == "sha256sum" || strings.ToLower(filepath.Base(fileName)) == "sha256sums" || strings.ToLower(filepath.Ext(fileName)) == ".sha256"
+			},
+			ParseChecksumLine: std.ParseChecksumLine,
+		},
+		common.SHA384: {
+			Algo:      common.SHA384,
+			Name:      "sha384",
+			Extension: ".sha384",
+			Keyed:     false,
+			Compute: func(reader io.Reader, key string, rs gfile.FileAndRangeSpec) (string, error) {
+				return std.Compute(reader, key, func(_ string) (hash.Hash, error) { return sha512.New384(), nil }, rs)
+			},
+			OutputLen: 96,
+			Validate:  func(_ string) error { return nil },
+			AcceptsFile: func(fileName string) bool {
+				return strings.ToLower(filepath.Base(fileName)) == "sha384sum" || strings.ToLower(filepath.Ext(fileName)) == ".sha384"
 			},
 			ParseChecksumLine: std.ParseChecksumLine,
 		},
@@ -146,6 +179,51 @@ func init() {
 			},
 			ParseChecksumLine: std.ParseChecksumLine,
 		},
+		common.SHA512_224: {
+			Algo:      common.SHA512_224,
+			Name:      "sha512-224",
+			Extension: ".sha512-224",
+			Keyed:     false,
+			Compute: func(reader io.Reader, key string, rs gfile.FileAndRangeSpec) (string, error) {
+				return std.Compute(reader, key, func(_ string) (hash.Hash, error) { return sha512.New512_224(), nil }, rs)
+			},
+			OutputLen: 56,
+			Validate:  func(_ string) error { return nil },
+			AcceptsFile: func(fileName string) bool {
+				return strings.ToLower(filepath.Base(fileName)) == "sha512-224sum" || strings.ToLower(filepath.Ext(fileName)) == ".sha512-224"
+			},
+			ParseChecksumLine: std.ParseChecksumLine,
+		},
+		common.SHA512_256: {
+			Algo:      common.SHA512_256,
+			Name:      "sha512-256",
+			Extension: ".sha512-256",
+			Keyed:     false,
+			Compute: func(reader io.Reader, key string, rs gfile.FileAndRangeSpec) (string, error) {
+				return std.Compute(reader, key, func(_ string) (hash.Hash, error) { return sha512.New512_256(), nil }, rs)
+			},
+			OutputLen: 64,
+			Validate:  func(_ string) error { return nil },
+			AcceptsFile: func(fileName string) bool {
+				return strings.ToLower(filepath.Base(fileName)) == "sha512-256sum" || strings.ToLower(filepath.Ext(fileName)) == ".sha512-256"
+			},
+			ParseChecksumLine: std.ParseChecksumLine,
+		},
+		common.SHA3_224: {
+			Algo:      common.SHA3_224,
+			Name:      "sha3-224",
+			Extension: ".sha3-224",
+			Keyed:     false,
+			Compute: func(reader io.Reader, key string, rs gfile.FileAndRangeSpec) (string, error) {
+				return std.Compute(reader, key, func(_ string) (hash.Hash, error) { return sha3.New224(), nil }, rs)
+			},
+			OutputLen: 56,
+			Validate:  func(_ string) error { return nil },
+			AcceptsFile: func(fileName string) bool {
+				return strings.ToLower(filepath.Base(fileName)) == "sha3-224sum" || strings.ToLower(filepath.Ext(fileName)) == ".sha3-224"
+			},
+			ParseChecksumLine: std.ParseChecksumLine,
+		},
 		common.SHA3_256: {
 			Algo:      common.SHA3_256,
 			Name:      "sha3-256",
@@ -158,6 +236,36 @@ func init() {
 			Validate:  func(_ string) error { return nil },
 			AcceptsFile: func(fileName string) bool {
 				return strings.ToLower(filepath.Base(fileName)) == "sha3-256sum" || strings.ToLower(filepath.Ext(fileName)) == ".sha3-256"
+			},
+			ParseChecksumLine: std.ParseChecksumLine,
+		},
+		common.SHA3_384: {
+			Algo:      common.SHA3_384,
+			Name:      "sha3-384",
+			Extension: ".sha3-384",
+			Keyed:     false,
+			Compute: func(reader io.Reader, key string, rs gfile.FileAndRangeSpec) (string, error) {
+				return std.Compute(reader, key, func(_ string) (hash.Hash, error) { return sha3.New384(), nil }, rs)
+			},
+			OutputLen: 96,
+			Validate:  func(_ string) error { return nil },
+			AcceptsFile: func(fileName string) bool {
+				return strings.ToLower(filepath.Base(fileName)) == "sha3-384sum" || strings.ToLower(filepath.Ext(fileName)) == ".sha3-384"
+			},
+			ParseChecksumLine: std.ParseChecksumLine,
+		},
+		common.SHA3_512: {
+			Algo:      common.SHA3_512,
+			Name:      "sha3-512",
+			Extension: ".sha3-512",
+			Keyed:     false,
+			Compute: func(reader io.Reader, key string, rs gfile.FileAndRangeSpec) (string, error) {
+				return std.Compute(reader, key, func(_ string) (hash.Hash, error) { return sha3.New512(), nil }, rs)
+			},
+			OutputLen: 128,
+			Validate:  func(_ string) error { return nil },
+			AcceptsFile: func(fileName string) bool {
+				return strings.ToLower(filepath.Base(fileName)) == "sha3-512sum" || strings.ToLower(filepath.Ext(fileName)) == ".sha3-512"
 			},
 			ParseChecksumLine: std.ParseChecksumLine,
 		},
@@ -191,6 +299,21 @@ func init() {
 			},
 			ParseChecksumLine: std.ParseChecksumLine,
 		},
+		common.RIPEMD160: {
+			Algo:      common.RIPEMD160,
+			Name:      "ripemd160",
+			Extension: ".ripemd160",
+			Keyed:     false,
+			Compute: func(reader io.Reader, key string, rs gfile.FileAndRangeSpec) (string, error) {
+				return std.Compute(reader, key, func(_ string) (hash.Hash, error) { return ripemd160.New(), nil }, rs)
+			},
+			OutputLen: 40,
+			Validate:  func(_ string) error { return nil },
+			AcceptsFile: func(fileName string) bool {
+				return strings.ToLower(filepath.Base(fileName)) == "ripemd160sum" || strings.ToLower(filepath.Ext(fileName)) == ".ripemd160"
+			},
+			ParseChecksumLine: std.ParseChecksumLine,
+		},
 		common.BLAKE2B: {
 			Algo:      common.BLAKE2B,
 			Name:      "blake2b",
@@ -209,6 +332,24 @@ func init() {
 			},
 			ParseChecksumLine: std.ParseChecksumLine,
 		},
+		common.BLAKE2S: {
+			Algo:      common.BLAKE2S,
+			Name:      "blake2s",
+			Extension: ".blake2s",
+			Keyed:     false,
+			Compute: func(reader io.Reader, key string, rs gfile.FileAndRangeSpec) (string, error) {
+				return std.Compute(reader, key, func(_ string) (hash.Hash, error) {
+					h, err := blake2s.New256(nil)
+					return h, err
+				}, rs)
+			},
+			OutputLen: 64,
+			Validate:  func(_ string) error { return nil },
+			AcceptsFile: func(fileName string) bool {
+				return strings.ToLower(filepath.Base(fileName)) == "blake2ssum" || strings.ToLower(filepath.Ext(fileName)) == ".blake2s"
+			},
+			ParseChecksumLine: std.ParseChecksumLine,
+		},
 		common.BLAKE3: {
 			Algo:      common.BLAKE3,
 			Name:      "blake3",
@@ -221,6 +362,28 @@ func init() {
 			Validate:  func(_ string) error { return nil },
 			AcceptsFile: func(fileName string) bool {
 				return strings.ToLower(filepath.Base(fileName)) == "blake3sum" || strings.ToLower(filepath.Ext(fileName)) == ".blake3"
+			},
+			ParseChecksumLine: std.ParseChecksumLine,
+		},
+		common.HMACMD5: {
+			Algo:      common.HMACMD5,
+			Name:      "hmac-md5",
+			Extension: ".hmac-md5",
+			Keyed:     true,
+			Compute: func(reader io.Reader, key string, rs gfile.FileAndRangeSpec) (string, error) {
+				return std.Compute(reader, key, func(key string) (hash.Hash, error) {
+					return hmac.New(md5.New, []byte(key)), nil
+				}, rs)
+			},
+			OutputLen: 32,
+			Validate: func(key string) error {
+				if key == "" {
+					return fmt.Errorf("hmac-md5 requires a key")
+				}
+				return nil
+			},
+			AcceptsFile: func(fileName string) bool {
+				return strings.ToLower(filepath.Base(fileName)) == "hmac-md5sum" || strings.ToLower(filepath.Ext(fileName)) == ".hmac-md5"
 			},
 			ParseChecksumLine: std.ParseChecksumLine,
 		},
@@ -287,6 +450,66 @@ func init() {
 			},
 			AcceptsFile: func(fileName string) bool {
 				return strings.ToLower(filepath.Base(fileName)) == "hmac-sha512sum" || strings.ToLower(filepath.Ext(fileName)) == ".hmac-sha512"
+			},
+			ParseChecksumLine: std.ParseChecksumLine,
+		},
+		common.HMACRIPEMD160: {
+			Algo:      common.HMACRIPEMD160,
+			Name:      "hmac-ripemd160",
+			Extension: ".hmac-ripemd160",
+			Keyed:     true,
+			Compute: func(reader io.Reader, key string, rs gfile.FileAndRangeSpec) (string, error) {
+				return std.Compute(reader, key, func(key string) (hash.Hash, error) {
+					return hmac.New(ripemd160.New, []byte(key)), nil
+				}, rs)
+			},
+			OutputLen: 40,
+			Validate: func(key string) error {
+				if key == "" {
+					return fmt.Errorf("hmac-ripemd160 requires a key")
+				}
+				return nil
+			},
+			AcceptsFile: func(fileName string) bool {
+				return strings.ToLower(filepath.Base(fileName)) == "hmac-ripemd160sum" || strings.ToLower(filepath.Ext(fileName)) == ".hmac-ripemd160"
+			},
+			ParseChecksumLine: std.ParseChecksumLine,
+		},
+		common.HMACBLAKE2B: {
+			Algo:      common.HMACBLAKE2B,
+			Name:      "hmac-blake2b",
+			Extension: ".hmac-blake2b",
+			Keyed:     true,
+			Compute: func(reader io.Reader, key string, rs gfile.FileAndRangeSpec) (string, error) {
+				return std.Compute(reader, key, func(key string) (hash.Hash, error) {
+					h, err := blake2b.New256([]byte(key))
+					return h, err
+				}, rs)
+			},
+			OutputLen: 64,
+			Validate: func(key string) error {
+				if key == "" {
+					return fmt.Errorf("hmac-blake2b requires a key")
+				}
+				return nil
+			},
+			AcceptsFile: func(fileName string) bool {
+				return strings.ToLower(filepath.Base(fileName)) == "hmac-blake2bsum" || strings.ToLower(filepath.Ext(fileName)) == ".hmac-blake2b"
+			},
+			ParseChecksumLine: std.ParseChecksumLine,
+		},
+		common.ADLER32: {
+			Algo:      common.ADLER32,
+			Name:      "adler32",
+			Extension: ".adler32",
+			Keyed:     false,
+			Compute: func(reader io.Reader, key string, rs gfile.FileAndRangeSpec) (string, error) {
+				return std.Compute(reader, key, func(_ string) (hash.Hash, error) { return adler32.New(), nil }, rs)
+			},
+			OutputLen: 8,
+			Validate:  func(_ string) error { return nil },
+			AcceptsFile: func(fileName string) bool {
+				return strings.ToLower(filepath.Base(fileName)) == "adler32sum" || strings.ToLower(filepath.Ext(fileName)) == ".adler32"
 			},
 			ParseChecksumLine: std.ParseChecksumLine,
 		},
