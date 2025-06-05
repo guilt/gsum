@@ -311,6 +311,21 @@ func init() {
 			},
 			ParseChecksumLine: std.ParseChecksumLine,
 		},
+		common.KECCAK256: {
+			Algo:      common.KECCAK256,
+			Name:      "keccak256",
+			Extension: ".keccak256",
+			Keyed:     false,
+			Compute: func(reader io.Reader, key string, rs gfile.FileAndRangeSpec) (string, error) {
+				return std.Compute(reader, key, func(_ string) (hash.Hash, error) { return sha3.NewLegacyKeccak256(), nil }, rs)
+			},
+			OutputLen: 64, // 32 bytes = 64 hex
+			Validate:  func(_ string) error { return nil },
+			AcceptsFile: func(fileName string) bool {
+				return strings.ToLower(filepath.Base(fileName)) == "keccak256sum" || strings.ToLower(filepath.Ext(fileName)) == ".keccak256"
+			},
+			ParseChecksumLine: std.ParseChecksumLine,
+		},
 		common.SHAKE128: {
 			Algo:      common.SHAKE128,
 			Name:      "shake128",

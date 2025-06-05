@@ -113,6 +113,7 @@ gsum -help
 - **HMAC-SHA256**: Keyed HMAC using SHA256 for secure authentication.
 - **HMAC-SHA512**: Keyed HMAC using SHA512 for high-security authentication.
 - **Kangaroo12**: High-performance Keccak-based hash.
+- **Keccak256**: Pre-SHA3 256-bit hash for Ethereum blockchain.
 - **MD4**: Legacy cryptographic hash, less secure.
 - **MD5**: Legacy cryptographic hash, widely used but vulnerable.
 - **RIPEMD-160**: 160-bit cryptographic hash for OpenPGP and certificates.

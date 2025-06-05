@@ -70,6 +70,7 @@ const (
 	ARGON2_SHA512
 	SM3
 	TTH
+	KECCAK256
 )
 
 type Hasher struct {
