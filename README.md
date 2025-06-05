@@ -97,6 +97,7 @@ gsum -help
 ### Supported Algorithms
 
 - **Adler-32**: Lightweight non-cryptographic checksum for data integrity.
+- **ARGON2-SHA512**: Memory-hard password hash with SHA-512 salt, 2015 competition winner.
 - **BCRYPT-SHA512**: Adaptive password hash with SHA-512 for secure storage.
 - **BLAKE2B**: High-speed cryptographic hash for security and performance.
 - **BLAKE2S**: Compact BLAKE2 variant for embedded systems.

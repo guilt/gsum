@@ -24,6 +24,7 @@ import (
 	"golang.org/x/crypto/sha3"
 
 	"github.com/cespare/xxhash"
+	"github.com/guilt/gsum/pkg/argon2"
 	"github.com/guilt/gsum/pkg/bcrypt"
 	"github.com/guilt/gsum/pkg/bsdcksum"
 	"github.com/guilt/gsum/pkg/chacha"
@@ -55,6 +56,24 @@ func init() {
 			Validate:  func(_ string) error { return nil },
 			AcceptsFile: func(fileName string) bool {
 				return strings.ToLower(filepath.Base(fileName)) == "crc32sum" || strings.ToLower(filepath.Ext(fileName)) == ".crc32"
+			},
+			ParseChecksumLine: std.ParseChecksumLine,
+		},
+		common.ARGON2_SHA512: {
+			Algo:      common.ARGON2_SHA512,
+			Name:      "argon2-sha512",
+			Extension: ".argon2-sha512",
+			Keyed:     true,
+			Compute:   argon2.ComputeHash,
+			OutputLen: 64,
+			Validate: func(key string) error {
+				if key == "" {
+					return fmt.Errorf("argon2-sha512 requires a key")
+				}
+				return nil
+			},
+			AcceptsFile: func(fileName string) bool {
+				return strings.ToLower(filepath.Base(fileName)) == "argon2-sha512sum" || strings.ToLower(filepath.Ext(fileName)) == ".argon2-sha512"
 			},
 			ParseChecksumLine: std.ParseChecksumLine,
 		},

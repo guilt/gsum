@@ -67,6 +67,7 @@ const (
 	BLAKE2S
 	ADLER32
 	BCRYPT_SHA512
+	ARGON2_SHA512
 )
 
 type Hasher struct {
