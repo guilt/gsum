@@ -132,6 +132,7 @@ gsum -help
 - **SipHash**: Keyed hash for hash tables with 16-byte key.
 - **SM3**: Chinese 256-bit cryptographic hash for blockchain and standards.
 - **Streebog**: Russian cryptographic hash for signatures and certificates.
+- **TTH**: Tiger-based tree hash for BitTorrent and Gnutella file verification.
 - **XXHash**: Non-cryptographic, high-speed hash for checksums.
 
 ## Development

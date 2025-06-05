@@ -81,6 +81,7 @@ docs/_build/
 *.bcrypt-sha512
 *.argon2-sha512
 *.sm3
+*.tth
 
 adler32sum
 blake2bsum
@@ -125,6 +126,7 @@ xxhashsum
 bcrypt-sha512sum
 argon2-sha512sum
 sm3sum
+tthsum
 
 # Common checksum and signature files
 *.asc

@@ -7,6 +7,7 @@ toolchain go1.24.3
 require (
 	github.com/cespare/xxhash v1.1.0
 	github.com/charmbracelet/log v0.4.2
+	github.com/cxmcc/tiger v0.0.0-20170524142333-bde35e2713d7
 	github.com/dchest/siphash v1.2.3
 	github.com/emersion/go-bcrypt v0.0.0-20170822072041-6e724a1baa63
 	github.com/emmansun/gmsm v0.30.1

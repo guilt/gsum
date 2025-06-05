@@ -24,6 +24,7 @@ import (
 	"golang.org/x/crypto/sha3"
 
 	"github.com/cespare/xxhash"
+
 	"github.com/guilt/gsum/pkg/argon2"
 	"github.com/guilt/gsum/pkg/bcrypt"
 	"github.com/guilt/gsum/pkg/bsdcksum"
@@ -37,6 +38,7 @@ import (
 	"github.com/guilt/gsum/pkg/sm3"
 	"github.com/guilt/gsum/pkg/std"
 	"github.com/guilt/gsum/pkg/streebog"
+	"github.com/guilt/gsum/pkg/tth"
 
 	"github.com/zeebo/blake3"
 	"github.com/zentures/cityhash"
@@ -668,6 +670,19 @@ func init() {
 			Validate:  func(_ string) error { return nil },
 			AcceptsFile: func(fileName string) bool {
 				return strings.ToLower(filepath.Base(fileName)) == "sm3sum" || strings.ToLower(filepath.Ext(fileName)) == ".sm3"
+			},
+			ParseChecksumLine: std.ParseChecksumLine,
+		},
+		common.TTH: {
+			Algo:      common.TTH,
+			Name:      "tth",
+			Extension: ".tth",
+			Keyed:     false,
+			Compute:   tth.ComputeHash,
+			OutputLen: 48, // 24 bytes = 48 hex
+			Validate:  func(_ string) error { return nil },
+			AcceptsFile: func(fileName string) bool {
+				return strings.ToLower(filepath.Base(fileName)) == "tthsum" || strings.ToLower(filepath.Ext(fileName)) == ".tth"
 			},
 			ParseChecksumLine: std.ParseChecksumLine,
 		},
