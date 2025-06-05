@@ -1,18 +1,19 @@
-package sm3
+package pbkdf2
 
 import (
+	"crypto/sha512"
 	"encoding/hex"
 	"fmt"
 	"io"
 
-	"github.com/emmansun/gmsm/sm3"
 	gfile "github.com/guilt/gsum/pkg/file"
+	"golang.org/x/crypto/pbkdf2"
 )
 
-// ComputeHash computes the SM3 hash of a file range.
+// ComputeHash derives a key from a file range with PBKDF2, using a deterministic SHA-512 salt and SHA-512 hash.
 func ComputeHash(reader io.Reader, key string, rs gfile.FileAndRangeSpec) (string, error) {
-	if key != "" {
-		return "", fmt.Errorf("sm3: keyed hashing not supported")
+	if key == "" {
+		return "", fmt.Errorf("pbkdf2-sha512: key (password) is required")
 	}
 
 	// Handle range specification
@@ -38,12 +39,16 @@ func ComputeHash(reader io.Reader, key string, rs gfile.FileAndRangeSpec) (strin
 		r = io.LimitReader(reader, length)
 	}
 
-	// Compute SM3 hash
-	h := sm3.New()
-	if _, err := io.Copy(h, r); err != nil {
-		return "", fmt.Errorf("hashing range: %w", err)
+	// Read the range data
+	data, err := io.ReadAll(r)
+	if err != nil {
+		return "", fmt.Errorf("reading range: %w", err)
 	}
-	hash := h.Sum(nil) // 32 bytes
 
+	// Derive salt from key using SHA-512
+	salt := sha512.Sum512([]byte(key)) // 64 bytes
+
+	// PBKDF2 with SHA-512, 100000 iterations, 64-byte output
+	hash := pbkdf2.Key([]byte(key+string(data)), salt[:], 100000, 64, sha512.New)
 	return hex.EncodeToString(hash), nil
 }

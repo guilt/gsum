@@ -116,6 +116,7 @@ gsum -help
 - **Keccak256**: Pre-SHA3 256-bit hash for Ethereum blockchain.
 - **MD4**: Legacy cryptographic hash, less secure.
 - **MD5**: Legacy cryptographic hash, widely used but vulnerable.
+- **PBKDF2-SHA512**: Key derivation with SHA-512 salt and hash for password hashing and key stretching.
 - **RIPEMD-160**: 160-bit cryptographic hash for OpenPGP and certificates.
 - **SHA1**: Legacy Secure Hash Algorithm, used in older systems.
 - **SHA224**: NIST-standard 224-bit SHA-2 hash for signatures and certificates.

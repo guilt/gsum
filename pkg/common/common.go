@@ -71,6 +71,7 @@ const (
 	SM3
 	TTH
 	KECCAK256
+	PBKDF2_SHA512
 )
 
 type Hasher struct {

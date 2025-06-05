@@ -24,6 +24,7 @@ import (
 	"golang.org/x/crypto/sha3"
 
 	"github.com/cespare/xxhash"
+	"github.com/emmansun/gmsm/sm3"
 
 	"github.com/guilt/gsum/pkg/argon2"
 	"github.com/guilt/gsum/pkg/bcrypt"
@@ -33,9 +34,9 @@ import (
 	gfile "github.com/guilt/gsum/pkg/file"
 	"github.com/guilt/gsum/pkg/ktwelve"
 	"github.com/guilt/gsum/pkg/log"
+	"github.com/guilt/gsum/pkg/pbkdf2"
 	"github.com/guilt/gsum/pkg/shake"
 	"github.com/guilt/gsum/pkg/siphash"
-	"github.com/guilt/gsum/pkg/sm3"
 	"github.com/guilt/gsum/pkg/std"
 	"github.com/guilt/gsum/pkg/streebog"
 	"github.com/guilt/gsum/pkg/tth"
@@ -319,7 +320,7 @@ func init() {
 			Compute: func(reader io.Reader, key string, rs gfile.FileAndRangeSpec) (string, error) {
 				return std.Compute(reader, key, func(_ string) (hash.Hash, error) { return sha3.NewLegacyKeccak256(), nil }, rs)
 			},
-			OutputLen: 64, // 32 bytes = 64 hex
+			OutputLen: 64,
 			Validate:  func(_ string) error { return nil },
 			AcceptsFile: func(fileName string) bool {
 				return strings.ToLower(filepath.Base(fileName)) == "keccak256sum" || strings.ToLower(filepath.Ext(fileName)) == ".keccak256"
@@ -680,7 +681,9 @@ func init() {
 			Name:      "sm3",
 			Extension: ".sm3",
 			Keyed:     false,
-			Compute:   sm3.ComputeHash,
+			Compute: func(reader io.Reader, key string, rs gfile.FileAndRangeSpec) (string, error) {
+				return std.Compute(reader, key, func(_ string) (hash.Hash, error) { return sm3.New(), nil }, rs)
+			},
 			OutputLen: 64,
 			Validate:  func(_ string) error { return nil },
 			AcceptsFile: func(fileName string) bool {
@@ -698,6 +701,24 @@ func init() {
 			Validate:  func(_ string) error { return nil },
 			AcceptsFile: func(fileName string) bool {
 				return strings.ToLower(filepath.Base(fileName)) == "tthsum" || strings.ToLower(filepath.Ext(fileName)) == ".tth"
+			},
+			ParseChecksumLine: std.ParseChecksumLine,
+		},
+		common.PBKDF2_SHA512: {
+			Algo:      common.PBKDF2_SHA512,
+			Name:      "pbkdf2-sha512",
+			Extension: ".pbkdf2-sha512",
+			Keyed:     true,
+			Compute:   pbkdf2.ComputeHash,
+			OutputLen: 128,
+			Validate: func(key string) error {
+				if key == "" {
+					return fmt.Errorf("pbkdf2-sha512 requires a key")
+				}
+				return nil
+			},
+			AcceptsFile: func(fileName string) bool {
+				return strings.ToLower(filepath.Base(fileName)) == "pbkdf2-sha512sum" || strings.ToLower(filepath.Ext(fileName)) == ".pbkdf2-sha512"
 			},
 			ParseChecksumLine: std.ParseChecksumLine,
 		},
