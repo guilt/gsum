@@ -85,6 +85,8 @@ docs/_build/
 *.keccak256
 *.pbkdf2-sha512
 *.scrypt-sha512
+*.ssdeep
+*.whirlpool
 
 adler32sum
 blake2bsum
@@ -133,6 +135,8 @@ tthsum
 keccak256sum
 pbkdf2-sha512sum
 scrypt-sha512sum
+ssdeepsum
+whirlpoolsum
 
 # Common checksum and signature files
 *.asc

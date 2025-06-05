@@ -73,6 +73,8 @@ const (
 	KECCAK256
 	PBKDF2_SHA512
 	SCRYPT_SHA512
+	SSDEEP
+	WHIRLPOOL
 )
 
 type Hasher struct {

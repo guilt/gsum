@@ -4,13 +4,16 @@
 
 ## Features
 
-- **Supported Algorithms**: CRC32, BSD-CKSUM, MD4, MD5, SHA1, SHA256, SHA512, SHA3-256, SHAKE128, SHAKE256, BLAKE2B, BLAKE3, HMAC-SHA1, HMAC-SHA256, HMAC-SHA512, ChaCha20-Poly1305, XXHash, SipHash, CityHash, KangarooTwelve.
-- **Incremental Hashing**: Compute hashes for specific file ranges (e.g., 10%-20%) or incremental chunks.
+- **Supported Algorithms**: 40+ Algorithms including CRC32, BSD-CKSUM, MD5, SHA1, SHA256, SHA512,
+SHA3, BLAKE2B, HMAC, ChaCha20-Poly1305, XXHash, Kangaroo12, Keccak256, Streebog, SM3, Ssdeep.
+- **Incremental Hashing**: Compute hashes for specific file ranges (e.g., 13%-40%) or in
+incremental chunks (5%).
 - **GPG Support**: Sign and verify hash files with GPG for integrity and authenticity.
 - **Progress Bars**: Visual feedback for long-running operations with customizable progress bars.
-- **Keyed Hashing**: Support for algorithms requiring keys (e.g., HMAC, SipHash, ChaCha20-Poly1305).
+- **Keyed Hashing**: Support for algorithms requiring keys (e.g., HMAC, SipHash, BCrypt-SHA512, ChaCha20-Poly1305).
 - **Cross-Platform**: Compatible with modern OSes.
 - **Modular Design**: Extensible architecture for adding new hash algorithms.
+- **Simple**: Consistent syntax, easy to use.
 
 ## Installation
 
@@ -134,8 +137,10 @@ gsum -help
 - **Scrypt-SHA512**: Memory-hard key derivation with SHA-512 salt for password hashing.
 - **SipHash**: Keyed hash for hash tables with 16-byte key.
 - **SM3**: Chinese 256-bit cryptographic hash for blockchain and standards.
+- **Ssdeep**: Fuzzy hash for similarity detection.
 - **Streebog**: Russian cryptographic hash for signatures and certificates.
 - **TTH**: Tiger-based tree hash for BitTorrent and Gnutella file verification.
+- **Whirlpool**: AES-based 512-bit cryptographic hash for secure storage.
 - **XXHash**: Non-cryptographic, high-speed hash for checksums.
 
 ## Development
@@ -155,7 +160,7 @@ To contribute or extend `gsum`:
    GOOS=linux GOARCH=amd64 go build -o gsum-linux-amd64 ./cmd/gsum
    ```
 3. **Run Tests**:
-   (Tests TBD - Contributions welcome!)
+   (Contributions welcome!)
 
 
 ## Dependencies
@@ -168,6 +173,11 @@ To contribute or extend `gsum`:
 - `github.com/zeebo/blake3`: BLAKE3
 - `github.com/schollz/progressbar/v3`: Progress bars
 - `github.com/charmbracelet/log v0.4.2`: Color Logging
+- `github.com/cxmcc/tiger`: Tiger Tree Hash
+- `github.com/emersion/go-bcrypt`: BCrypt Hash fork of `golang.org/x/crypto` with explicit Salt
+- `github.com/emmansun/gmsm`: SM3 Hash
+- `github.com/glaslos/ssdeep`: Ssdeep Fuzzy Hash
+- `github.com/jzelinskie/whirlpool`: Whirlpool Hash
 
 ## License
 

@@ -25,6 +25,7 @@ import (
 
 	"github.com/cespare/xxhash"
 	"github.com/emmansun/gmsm/sm3"
+	"github.com/jzelinskie/whirlpool"
 
 	"github.com/guilt/gsum/pkg/argon2"
 	"github.com/guilt/gsum/pkg/bcrypt"
@@ -38,6 +39,7 @@ import (
 	"github.com/guilt/gsum/pkg/scrypt"
 	"github.com/guilt/gsum/pkg/shake"
 	"github.com/guilt/gsum/pkg/siphash"
+	"github.com/guilt/gsum/pkg/ssdeep"
 	"github.com/guilt/gsum/pkg/std"
 	"github.com/guilt/gsum/pkg/streebog"
 	"github.com/guilt/gsum/pkg/tth"
@@ -738,6 +740,34 @@ func init() {
 			},
 			AcceptsFile: func(fileName string) bool {
 				return strings.ToLower(filepath.Base(fileName)) == "scrypt-sha512sum" || strings.ToLower(filepath.Ext(fileName)) == ".scrypt-sha512"
+			},
+			ParseChecksumLine: std.ParseChecksumLine,
+		},
+		common.SSDEEP: {
+			Algo:      common.SSDEEP,
+			Name:      "ssdeep",
+			Extension: ".ssdeep",
+			Keyed:     false,
+			Compute:   ssdeep.ComputeHash,
+			OutputLen: 128, // Approximate max length of ssdeep hash
+			Validate:  func(_ string) error { return nil },
+			AcceptsFile: func(fileName string) bool {
+				return strings.ToLower(filepath.Base(fileName)) == "ssdeepsum" || strings.ToLower(filepath.Ext(fileName)) == ".ssdeep"
+			},
+			ParseChecksumLine: std.ParseChecksumLine,
+		},
+		common.WHIRLPOOL: {
+			Algo:      common.WHIRLPOOL,
+			Name:      "whirlpool",
+			Extension: ".whirlpool",
+			Keyed:     false,
+			Compute: func(reader io.Reader, key string, rs gfile.FileAndRangeSpec) (string, error) {
+				return std.Compute(reader, key, func(_ string) (hash.Hash, error) { return whirlpool.New(), nil }, rs)
+			},
+			OutputLen: 128, // 64 bytes = 128 hex chars
+			Validate:  func(_ string) error { return nil },
+			AcceptsFile: func(fileName string) bool {
+				return strings.ToLower(filepath.Base(fileName)) == "whirlpoolsum" || strings.ToLower(filepath.Ext(fileName)) == ".whirlpool"
 			},
 			ParseChecksumLine: std.ParseChecksumLine,
 		},
