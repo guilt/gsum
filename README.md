@@ -131,6 +131,7 @@ gsum -help
 - **SHA512-256**: Truncated 256-bit SHA-2 hash for efficiency and security.
 - **SHAKE128**: Extendable-output function for flexible hashing.
 - **SHAKE256**: Extendable-output function for secure hashing.
+- **Scrypt-SHA512**: Memory-hard key derivation with SHA-512 salt for password hashing.
 - **SipHash**: Keyed hash for hash tables with 16-byte key.
 - **SM3**: Chinese 256-bit cryptographic hash for blockchain and standards.
 - **Streebog**: Russian cryptographic hash for signatures and certificates.

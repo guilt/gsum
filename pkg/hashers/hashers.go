@@ -35,6 +35,7 @@ import (
 	"github.com/guilt/gsum/pkg/ktwelve"
 	"github.com/guilt/gsum/pkg/log"
 	"github.com/guilt/gsum/pkg/pbkdf2"
+	"github.com/guilt/gsum/pkg/scrypt"
 	"github.com/guilt/gsum/pkg/shake"
 	"github.com/guilt/gsum/pkg/siphash"
 	"github.com/guilt/gsum/pkg/std"
@@ -719,6 +720,24 @@ func init() {
 			},
 			AcceptsFile: func(fileName string) bool {
 				return strings.ToLower(filepath.Base(fileName)) == "pbkdf2-sha512sum" || strings.ToLower(filepath.Ext(fileName)) == ".pbkdf2-sha512"
+			},
+			ParseChecksumLine: std.ParseChecksumLine,
+		},
+		common.SCRYPT_SHA512: {
+			Algo:      common.SCRYPT_SHA512,
+			Name:      "scrypt-sha512",
+			Extension: ".scrypt-sha512",
+			Keyed:     true,
+			Compute:   scrypt.ComputeHash,
+			OutputLen: 128, // 64 bytes = 128 hex
+			Validate: func(key string) error {
+				if key == "" {
+					return fmt.Errorf("scrypt-sha512 requires a key")
+				}
+				return nil
+			},
+			AcceptsFile: func(fileName string) bool {
+				return strings.ToLower(filepath.Base(fileName)) == "scrypt-sha512sum" || strings.ToLower(filepath.Ext(fileName)) == ".scrypt-sha512"
 			},
 			ParseChecksumLine: std.ParseChecksumLine,
 		},

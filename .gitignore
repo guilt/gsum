@@ -84,6 +84,7 @@ docs/_build/
 *.tth
 *.keccak256
 *.pbkdf2-sha512
+*.scrypt-sha512
 
 adler32sum
 blake2bsum
@@ -131,6 +132,7 @@ sm3sum
 tthsum
 keccak256sum
 pbkdf2-sha512sum
+scrypt-sha512sum
 
 # Common checksum and signature files
 *.asc
