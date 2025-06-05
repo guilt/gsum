@@ -109,7 +109,7 @@ gsum -help
 - **SipHash**: Keyed hash for hash tables (16-byte key).
 - **CityHash**: Non-cryptographic hash for strings.
 - **Kangaroo12**: High-performance Keccak-based hash.
-- **Streebog**: A specific hash used in Russia **To be Implemented**
+- **Streebog**: Russian cryptographic hash for signatures and certificates.
 
 ## Development
 

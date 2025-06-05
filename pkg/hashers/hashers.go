@@ -374,7 +374,7 @@ func init() {
 			Name:      "streebog256",
 			Extension: ".streebog256",
 			Keyed:     false,
-			Compute:   streebog.ComputeHash,
+			Compute:   streebog.ComputeHash256,
 			OutputLen: 64,
 			Validate:  func(_ string) error { return nil },
 			AcceptsFile: func(fileName string) bool {
@@ -387,7 +387,7 @@ func init() {
 			Name:      "streebog512",
 			Extension: ".streebog512",
 			Keyed:     false,
-			Compute:   streebog.ComputeHash,
+			Compute:   streebog.ComputeHash512,
 			OutputLen: 128,
 			Validate:  func(_ string) error { return nil },
 			AcceptsFile: func(fileName string) bool {
