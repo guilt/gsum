@@ -8,6 +8,7 @@ require (
 	github.com/cespare/xxhash v1.1.0
 	github.com/charmbracelet/log v0.4.2
 	github.com/dchest/siphash v1.2.3
+	github.com/emersion/go-bcrypt v0.0.0-20170822072041-6e724a1baa63
 	github.com/mimoo/GoKangarooTwelve v0.0.0-20180211155453-f494cd819f1c
 	github.com/schollz/progressbar/v3 v3.14.6
 	github.com/zeebo/blake3 v0.2.4

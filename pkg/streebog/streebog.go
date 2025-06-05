@@ -4,13 +4,13 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
-	"io"
 	gfile "github.com/guilt/gsum/pkg/file"
+	"io"
 )
 
 // Constants for Streebog (GOST R 34.11-2012)
 const (
-	BlockSize   = 64 // 512 bits
+	BlockSize     = 64 // 512 bits
 	DigestSize512 = 64 // 512 bits (for Streebog-512)
 	DigestSize256 = 32 // 256 bits (for Streebog-256)
 )
@@ -106,18 +106,18 @@ func (d *digest) Write(p []byte) (n int, err error) {
 func (d *digest) Sum(b []byte) []byte {
 	// Pad and process remaining data
 	d.pad()
-	
+
 	// Finalize with length and checksum
 	var lenBlock [BlockSize]byte
 	binary.LittleEndian.PutUint64(lenBlock[:8], uint64(d.n[0]))
 	d.processBlock(lenBlock[:])
-	
+
 	var sigmaBlock [BlockSize]byte
 	for i := 0; i < 8; i++ {
 		binary.LittleEndian.PutUint64(sigmaBlock[i*8:], d.sigma[i])
 	}
 	d.processBlock(sigmaBlock[:])
-	
+
 	// Convert hash to bytes
 	var result [DigestSize512]byte
 	for i := 0; i < 8; i++ {
@@ -147,14 +147,14 @@ func (d *digest) processBlock(block []byte) {
 	for i := 0; i < 8; i++ {
 		m[i] = binary.LittleEndian.Uint64(block[i*8:])
 	}
-	
+
 	// Update counters
 	d.n[0] += 512 // Update bit length
 	d.addMod512(m[:])
-	
+
 	// Compression function
 	d.g(m[:])
-	
+
 	// Update checksum
 	for i := 0; i < 8; i++ {
 		d.sigma[i] += m[i]
@@ -183,7 +183,7 @@ func (d *digest) g(m []uint64) {
 		copy(mArray[:], m)
 		d.e(&k, &mArray)
 	}
-	
+
 	// Mix
 	for i := 0; i < 8; i++ {
 		t[i] = d.h[i] ^ k[i] ^ m[i]

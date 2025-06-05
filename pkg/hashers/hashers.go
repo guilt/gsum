@@ -24,6 +24,7 @@ import (
 	"golang.org/x/crypto/sha3"
 
 	"github.com/cespare/xxhash"
+	"github.com/guilt/gsum/pkg/bcrypt"
 	"github.com/guilt/gsum/pkg/bsdcksum"
 	"github.com/guilt/gsum/pkg/chacha"
 	"github.com/guilt/gsum/pkg/common"
@@ -73,6 +74,24 @@ func init() {
 				return strings.ToLower(filepath.Base(fileName)) == "cksum" || strings.ToLower(filepath.Ext(fileName)) == ".cksum"
 			},
 			ParseChecksumLine: bsdcksum.ParseChecksumLine,
+		},
+		common.BCRYPT_SHA512: {
+			Algo:      common.BCRYPT_SHA512,
+			Name:      "bcrypt-sha512",
+			Extension: ".bcrypt-sha512",
+			Keyed:     true,
+			Compute:   bcrypt.ComputeHash,
+			OutputLen: 60,
+			Validate: func(key string) error {
+				if key == "" {
+					return fmt.Errorf("bcrypt-sha512 requires a key")
+				}
+				return nil
+			},
+			AcceptsFile: func(fileName string) bool {
+				return strings.ToLower(filepath.Base(fileName)) == "bcrypt-sha512sum" || strings.ToLower(filepath.Ext(fileName)) == ".bcrypt-sha512"
+			},
+			ParseChecksumLine: bcrypt.ParseChecksumLine,
 		},
 		common.MD4: {
 			Algo:      common.MD4,

@@ -66,6 +66,7 @@ const (
 	HMACBLAKE2B
 	BLAKE2S
 	ADLER32
+	BCRYPT_SHA512
 )
 
 type Hasher struct {
