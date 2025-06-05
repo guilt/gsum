@@ -68,6 +68,7 @@ const (
 	ADLER32
 	BCRYPT_SHA512
 	ARGON2_SHA512
+	SM3
 )
 
 type Hasher struct {

@@ -34,8 +34,10 @@ import (
 	"github.com/guilt/gsum/pkg/log"
 	"github.com/guilt/gsum/pkg/shake"
 	"github.com/guilt/gsum/pkg/siphash"
+	"github.com/guilt/gsum/pkg/sm3"
 	"github.com/guilt/gsum/pkg/std"
 	"github.com/guilt/gsum/pkg/streebog"
+
 	"github.com/zeebo/blake3"
 	"github.com/zentures/cityhash"
 )
@@ -653,6 +655,19 @@ func init() {
 			Validate:  func(_ string) error { return nil },
 			AcceptsFile: func(fileName string) bool {
 				return strings.ToLower(filepath.Base(fileName)) == "streebog512sum" || strings.ToLower(filepath.Ext(fileName)) == ".streebog512"
+			},
+			ParseChecksumLine: std.ParseChecksumLine,
+		},
+		common.SM3: {
+			Algo:      common.SM3,
+			Name:      "sm3",
+			Extension: ".sm3",
+			Keyed:     false,
+			Compute:   sm3.ComputeHash,
+			OutputLen: 64,
+			Validate:  func(_ string) error { return nil },
+			AcceptsFile: func(fileName string) bool {
+				return strings.ToLower(filepath.Base(fileName)) == "sm3sum" || strings.ToLower(filepath.Ext(fileName)) == ".sm3"
 			},
 			ParseChecksumLine: std.ParseChecksumLine,
 		},

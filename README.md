@@ -130,6 +130,7 @@ gsum -help
 - **SHAKE128**: Extendable-output function for flexible hashing.
 - **SHAKE256**: Extendable-output function for secure hashing.
 - **SipHash**: Keyed hash for hash tables with 16-byte key.
+- **SM3**: Chinese 256-bit cryptographic hash for blockchain and standards.
 - **Streebog**: Russian cryptographic hash for signatures and certificates.
 - **XXHash**: Non-cryptographic, high-speed hash for checksums.
 
