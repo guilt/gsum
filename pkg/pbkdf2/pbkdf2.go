@@ -2,53 +2,36 @@ package pbkdf2
 
 import (
 	"crypto/sha512"
-	"encoding/hex"
-	"fmt"
-	"io"
-
-	gfile "github.com/guilt/gsum/pkg/file"
+	"github.com/guilt/gsum/pkg/file"
+	"github.com/guilt/gsum/pkg/std"
 	"golang.org/x/crypto/pbkdf2"
+	"io"
 )
 
 // ComputeHash derives a key from a file range with PBKDF2, using a deterministic SHA-512 salt and SHA-512 hash.
-func ComputeHash(reader io.Reader, key string, rs gfile.FileAndRangeSpec) (string, error) {
-	if key == "" {
-		return "", fmt.Errorf("pbkdf2-sha512: key (password) is required")
+// ComputeHash returns a PBKDF2 hash of the file range, salted with a SHA-512 hash of the key.
+func ComputeHash(r io.Reader, key string, rs file.FileAndRangeSpec) (string, error) {
+	// Prepare a reader for the requested range
+	r, err := std.PrepareRangeReader(r, rs)
+	if err != nil {
+		return "", err
 	}
 
-	// Handle range specification
-	var r io.Reader = reader
-	if rs.Start > 0 {
-		if seeker, ok := reader.(io.Seeker); ok {
-			_, err := seeker.Seek(rs.Start, io.SeekStart)
-			if err != nil {
-				return "", fmt.Errorf("seeking to start offset %d: %w", rs.Start, err)
-			}
-		} else {
-			_, err := io.CopyN(io.Discard, reader, rs.Start)
-			if err != nil {
-				return "", fmt.Errorf("skipping to start offset %d: %w", rs.Start, err)
-			}
-		}
-	}
-	if rs.End != -1 {
-		length := rs.End - rs.Start
-		if length <= 0 {
-			return "", fmt.Errorf("invalid range: start=%d, end=%d", rs.Start, rs.End)
-		}
-		r = io.LimitReader(reader, length)
-	}
-
-	// Read the range data
+	// Read all data from the range
 	data, err := io.ReadAll(r)
 	if err != nil {
-		return "", fmt.Errorf("reading range: %w", err)
+		return "", err
 	}
 
-	// Derive salt from key using SHA-512
-	salt := sha512.Sum512([]byte(key)) // 64 bytes
+	// Derive salt from the key using SHA-512
+	salt := sha512.Sum512([]byte(key))
 
-	// PBKDF2 with SHA-512, 100000 iterations, 64-byte output
-	hash := pbkdf2.Key([]byte(key+string(data)), salt[:], 100000, 64, sha512.New)
-	return hex.EncodeToString(hash), nil
+	// Concatenate key and data for hashing
+	input := append([]byte(key), data...)
+
+	// Compute PBKDF2 hash
+	hash := pbkdf2.Key(input, salt[:], 100000, 32, sha512.New)
+
+	// Return hash as hex string
+	return std.BytesToHex(hash), nil
 }

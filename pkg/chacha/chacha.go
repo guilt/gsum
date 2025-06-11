@@ -6,6 +6,7 @@ import (
 
 	gfile "github.com/guilt/gsum/pkg/file"
 	"github.com/guilt/gsum/pkg/log"
+	"github.com/guilt/gsum/pkg/std"
 
 	"golang.org/x/crypto/chacha20poly1305"
 )
@@ -23,29 +24,13 @@ func Compute(reader io.Reader, key string, rs gfile.FileAndRangeSpec) (string, e
 	}
 
 	nonce := make([]byte, aead.NonceSize())
-	data := make([]byte, 0)
 
-	if rs.Start > 0 {
-		if seeker, ok := reader.(io.Seeker); ok {
-			_, err := seeker.Seek(rs.Start, io.SeekStart)
-			if err != nil {
-				return "", err
-			}
-		} else {
-			_, err := io.CopyN(io.Discard, reader, rs.Start)
-			if err != nil {
-				return "", err
-			}
-		}
+	r, err := std.PrepareRangeReader(reader, rs)
+	if err != nil {
+		return "", err
 	}
 
-	var r io.Reader = reader
-	if rs.End != -1 {
-		length := rs.End - rs.Start
-		r = io.LimitReader(reader, length)
-	}
-
-	data, err = io.ReadAll(r)
+	data, err := io.ReadAll(r)
 	if err != nil {
 		return "", err
 	}

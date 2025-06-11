@@ -2,10 +2,7 @@ package streebog
 
 import (
 	"encoding/binary"
-	"encoding/hex"
-	"fmt"
-	gfile "github.com/guilt/gsum/pkg/file"
-	"io"
+	"math/bits"
 )
 
 // Constants for Streebog (GOST R 34.11-2012)
@@ -55,6 +52,16 @@ type digest struct {
 	buffer [BlockSize]byte
 	bufLen int
 	size   int // Digest size in bytes (32 for 256-bit, 64 for 512-bit)
+}
+
+// BlockSize returns the hash's underlying block size.
+func (d *digest) BlockSize() int {
+	return BlockSize
+}
+
+// Size returns the number of bytes Sum will return.
+func (d *digest) Size() int {
+	return d.size
 }
 
 // New512 creates a new Streebog-512 hash instance
@@ -165,9 +172,7 @@ func (d *digest) processBlock(block []byte) {
 func (d *digest) addMod512(x []uint64) {
 	var carry uint64
 	for i := 7; i >= 0; i-- {
-		sum := d.n[i] + x[i] + carry
-		d.n[i] = sum
-		carry = sum >> 64
+		d.n[i], carry = bits.Add64(d.n[i], x[i], carry)
 	}
 }
 
@@ -210,96 +215,4 @@ func (d *digest) e(k, m *[8]uint64) {
 		k[i] ^= m[i]
 	}
 	d.lps(k)
-}
-
-// ComputeHash512 implements GSum's hash interface for Streebog-512
-func ComputeHash512(reader io.Reader, key string, rs gfile.FileAndRangeSpec) (string, error) {
-	if key != "" {
-		return "", fmt.Errorf("streebog512: keyed hashing not supported")
-	}
-
-	d := New512()
-
-	// Handle range specification per FileAndRangeSpec, following chacha.go's approach
-	var r io.Reader = reader
-
-	// Skip bytes if Start > 0
-	if rs.Start > 0 {
-		if seeker, ok := reader.(io.Seeker); ok {
-			_, err := seeker.Seek(rs.Start, io.SeekStart)
-			if err != nil {
-				return "", fmt.Errorf("seeking to start offset %d: %w", rs.Start, err)
-			}
-		} else {
-			_, err := io.CopyN(io.Discard, reader, rs.Start)
-			if err != nil {
-				return "", fmt.Errorf("skipping to start offset %d: %w", rs.Start, err)
-			}
-		}
-	}
-
-	// Limit reader if End is specified
-	if rs.End != -1 {
-		length := rs.End - rs.Start
-		if length <= 0 {
-			return "", fmt.Errorf("invalid range: start=%d, end=%d", rs.Start, rs.End)
-		}
-		r = io.LimitReader(reader, length)
-	}
-
-	// Hash the specified range
-	_, err := io.Copy(d, r)
-	if err != nil {
-		return "", fmt.Errorf("hashing range: %w", err)
-	}
-
-	// Finalize and return hex-encoded hash
-	hash := d.Sum(nil)
-	return hex.EncodeToString(hash), nil
-}
-
-// ComputeHash256 implements GSum's hash interface for Streebog-256
-func ComputeHash256(reader io.Reader, key string, rs gfile.FileAndRangeSpec) (string, error) {
-	if key != "" {
-		return "", fmt.Errorf("streebog256: keyed hashing not supported")
-	}
-
-	d := New256()
-
-	// Handle range specification per FileAndRangeSpec, following chacha.go's approach
-	var r io.Reader = reader
-
-	// Skip bytes if Start > 0
-	if rs.Start > 0 {
-		if seeker, ok := reader.(io.Seeker); ok {
-			_, err := seeker.Seek(rs.Start, io.SeekStart)
-			if err != nil {
-				return "", fmt.Errorf("seeking to start offset %d: %w", rs.Start, err)
-			}
-		} else {
-			_, err := io.CopyN(io.Discard, reader, rs.Start)
-			if err != nil {
-				return "", fmt.Errorf("skipping to start offset %d: %w", rs.Start, err)
-			}
-		}
-	}
-
-	// Limit reader if End is specified
-	if rs.End != -1 {
-		length := rs.End - rs.Start
-		if length <= 0 {
-			return "", fmt.Errorf("invalid range: start=%d, end=%d", rs.Start, rs.End)
-		}
-		r = io.LimitReader(reader, length)
-	}
-
-	// Hash the specified range
-	_, err := io.Copy(d, r)
-	if err != nil {
-		return "", fmt.Errorf("hashing range: %w", err)
-	}
-
-	// Finalize and return hex-encoded hash
-	hash := d.Sum(nil)
-	return hex.EncodeToString(hash), nil
 }

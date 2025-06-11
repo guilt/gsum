@@ -1,21 +1,24 @@
 package main
 
 import (
-	"bufio"
 	"flag"
 	"fmt"
 	"math"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/guilt/gsum/pkg/common"
 	gfile "github.com/guilt/gsum/pkg/file"
 	ggpg "github.com/guilt/gsum/pkg/gpg"
-	_ "github.com/guilt/gsum/pkg/hashers"
+
 	glc "github.com/guilt/gsum/pkg/lifecycle"
 	"github.com/guilt/gsum/pkg/log"
+
+	// Import hashers to register them
+	_ "github.com/guilt/gsum/pkg/hashers"
 )
 
 var logger = log.NewLogger()
@@ -96,18 +99,30 @@ func parseArgs() *config {
 	return cfg
 }
 
+// getInputFiles returns the parsed file paths from args. If isVerify, only the last arg is used.
 func getInputFiles(cfg *config, isVerify bool) []string {
 	if isVerify {
-		f, err := gfile.ParseFilePath(cfg.args[len(cfg.args)-1])
+		f, err := func(path string) (gfile.FileAndRangeSpec, error) {
+			var fs gfile.FileAndRangeSpec
+			if err := fs.Parse(path); err != nil {
+				return gfile.FileAndRangeSpec{}, err
+			}
+			return fs, nil
+		}(cfg.args[len(cfg.args)-1])
 		if err != nil {
 			logger.Fatalf("Invalid file path: %s", cfg.args[len(cfg.args)-1])
 		}
 		return []string{f.FilePath}
 	}
-
-	var files []string
+	files := make([]string, 0, len(cfg.args))
 	for _, arg := range cfg.args {
-		f, err := gfile.ParseFilePath(arg)
+		f, err := func(path string) (gfile.FileAndRangeSpec, error) {
+			var fs gfile.FileAndRangeSpec
+			if err := fs.Parse(path); err != nil {
+				return gfile.FileAndRangeSpec{}, err
+			}
+			return fs, nil
+		}(arg)
 		if err != nil {
 			logger.Fatalf("Invalid file path: %s", arg)
 		}
@@ -116,14 +131,15 @@ func getInputFiles(cfg *config, isVerify bool) []string {
 	return files
 }
 
+// getOutputHashFiles returns output files for hashes, using the provided output or defaulting to input+ext.
 func getOutputHashFiles(hasher common.Hasher, cfg *config) []string {
 	if cfg.output != "" {
 		return []string{cfg.output}
 	}
 	inputFiles := getInputFiles(cfg, false)
-	var hashFiles []string
-	for _, file := range inputFiles {
-		hashFiles = append(hashFiles, file+hasher.Extension)
+	hashFiles := make([]string, len(inputFiles))
+	for i, file := range inputFiles {
+		hashFiles[i] = file + hasher.Extension
 	}
 	return hashFiles
 }
@@ -136,39 +152,18 @@ func verifyFileHashes(hasher common.Hasher, inputFiles []string, progressFunc fu
 		}
 		size := fileInfo.Size()
 
-		var checksums []struct {
-			hashValue         string
-			fileAndRange      gfile.FileAndRangeSpec
-			expectedByteCount int64
-		}
+		var checksums []gfile.CheckSumSpec
 
 		if _, err := os.Stat(cfg.verify); err == nil {
-			file, err := os.Open(cfg.verify)
+			// Use hashers.GetHashes to load all checksums from file
+			allChecks, err := gfile.GetHashes(hasher.ParseChecksumLine, []string{cfg.verify})
 			if err != nil {
-				logger.Fatalf("Error opening verify file: %s", cfg.verify)
+				logger.Fatalf("Error loading hash file: %s", err)
 			}
-			defer file.Close()
-
-			scanner := bufio.NewScanner(file)
-			for scanner.Scan() {
-				line := strings.TrimSpace(scanner.Text())
-				if line == "" || strings.HasPrefix(line, "#") {
-					continue
+			for _, cs := range allChecks {
+				if filepath.Base(cs.FileAndRange.FilePath) == filepath.Base(filePath) {
+					checksums = append(checksums, cs)
 				}
-				hashValue, fileAndRange, byteCount, err := hasher.ParseChecksumLine(line)
-				if err != nil {
-					logger.Fatalf("Invalid checksum line: file=%s, line=%s", cfg.verify, line)
-				}
-				if filepath.Base(fileAndRange.FilePath) == filepath.Base(filePath) {
-					checksums = append(checksums, struct {
-						hashValue         string
-						fileAndRange      gfile.FileAndRangeSpec
-						expectedByteCount int64
-					}{hashValue, fileAndRange, byteCount})
-				}
-			}
-			if err := scanner.Err(); err != nil {
-				logger.Fatalf("Error reading verify file: %s", cfg.verify)
 			}
 			if len(checksums) == 0 {
 				logger.Fatalf("No matching hashes: file=%s, verify=%s", filePath, cfg.verify)
@@ -180,15 +175,15 @@ func verifyFileHashes(hasher common.Hasher, inputFiles []string, progressFunc fu
 				logger.Fatalf("Invalid hash length: expected=%d, got=%d", hasher.OutputLen, len(cfg.verify))
 			}
 			f := gfile.FileAndRangeSpec{FilePath: filePath}
-			checksums = append(checksums, struct {
-				hashValue         string
-				fileAndRange      gfile.FileAndRangeSpec
-				expectedByteCount int64
-			}{cfg.verify, f, 0})
+			checksums = append(checksums, gfile.CheckSumSpec{
+				HashValue:         cfg.verify,
+				FileAndRange:      f,
+				ExpectedByteCount: 0,
+			})
 		}
 
 		for _, c := range checksums {
-			rs := c.fileAndRange
+			rs := c.FileAndRange
 			if rs.IsPercent && rs.End != -1 {
 				rs.Start = int64(float64(size) * float64(rs.Start) / 10000)
 				rs.End = int64(float64(size) * float64(rs.End) / 10000)
@@ -198,8 +193,8 @@ func verifyFileHashes(hasher common.Hasher, inputFiles []string, progressFunc fu
 			if rs.End == -1 {
 				rangeSize = size
 			}
-			if c.expectedByteCount != 0 && c.expectedByteCount != rangeSize {
-				logger.Fatalf("Byte count mismatch: file=%s, expected=%d, got=%d", filePath, c.expectedByteCount, rangeSize)
+			if c.ExpectedByteCount != 0 && c.ExpectedByteCount != rangeSize {
+				logger.Fatalf("Byte count mismatch: file=%s, expected=%d, got=%d", filePath, c.ExpectedByteCount, rangeSize)
 			}
 
 			lc := progressFunc(filePath, rangeSize, rs.Start, rs.End)
@@ -208,20 +203,28 @@ func verifyFileHashes(hasher common.Hasher, inputFiles []string, progressFunc fu
 				logger.Fatalf("Error computing hash: file=%s, error=%s", filePath, err)
 			}
 
-			if !strings.EqualFold(c.hashValue, hash) {
+			if !strings.EqualFold(c.HashValue, hash) {
 				if rs.End != -1 {
-					logger.Fatalf("Hash mismatch: file=%s, range=%s, expected=%s, got=%s", filePath, rs.String(), c.hashValue, hash)
+					logger.Fatalf("Hash mismatch: file=%s, range=%s, expected=%s, got=%s", filePath, rs.String(), c.HashValue, hash)
 				}
-				logger.Fatalf("Hash mismatch: file=%s, expected=%s, got=%s", filePath, c.hashValue, hash)
+				logger.Fatalf("Hash mismatch: file=%s, expected=%s, got=%s", filePath, c.HashValue, hash)
 			}
 		}
 	}
 	fmt.Println("Hash verification successful")
 }
 
+// generateFileHashes computes and writes hashes for each input file.
 func generateFileHashes(hasher common.Hasher, inputFiles, hashFiles []string, cfg *config, progressFunc func(string, int64, int64, int64) common.FileLifecycle) {
 	if cfg.increment != "" {
-		percent, err := gfile.ParsePercent(cfg.increment)
+		percent, err := func(s string) (float64, error) {
+			s = strings.TrimSuffix(s, "%")
+			percent, err := strconv.ParseFloat(s, 64)
+			if err != nil || percent < 0 || percent > 100 {
+				return 0, fmt.Errorf("invalid percent: %s", s)
+			}
+			return percent, nil
+		}(cfg.increment)
 		if err != nil {
 			logger.Fatalf("Invalid increment: %s", cfg.increment)
 		}
@@ -235,7 +238,14 @@ func generateFileHashes(hasher common.Hasher, inputFiles, hashFiles []string, cf
 	}
 
 	for i, file := range inputFiles {
-		f, err := gfile.ParseFilePath(cfg.args[i])
+		// Parse range spec from file arg (not just file path)
+		f, err := func(path string) (gfile.FileAndRangeSpec, error) {
+			var fs gfile.FileAndRangeSpec
+			if err := fs.Parse(path); err != nil {
+				return gfile.FileAndRangeSpec{}, err
+			}
+			return fs, nil
+		}(cfg.args[i])
 		if err != nil {
 			logger.Fatalf("Invalid file path: %s", cfg.args[i])
 		}
@@ -277,13 +287,13 @@ func generateFileHashes(hasher common.Hasher, inputFiles, hashFiles []string, cf
 }
 
 func computeHash(filePath string, hasher common.Hasher, rs gfile.FileAndRangeSpec, key string, lc common.FileLifecycle) (string, error) {
-	file, err := os.Open(filePath)
+	fh, err := os.Open(filePath)
 	if err != nil {
 		return "", err
 	}
-	defer file.Close()
+	defer fh.Close()
 	lc.OnStart(rs.Start, rs.End)
-	reader := &common.LifecycleReader{Reader: file, Lifecycle: lc}
+	reader := &common.LifecycleReader{Reader: fh, Lifecycle: lc}
 	defer lc.OnEnd()
 	return hasher.Compute(reader, key, rs)
 }

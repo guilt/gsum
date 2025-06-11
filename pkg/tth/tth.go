@@ -7,6 +7,7 @@ import (
 
 	"github.com/cxmcc/tiger"
 	gfile "github.com/guilt/gsum/pkg/file"
+	std "github.com/guilt/gsum/pkg/std"
 )
 
 // ComputeHash computes the TigerTreeHash (TTH) of a file range.
@@ -15,29 +16,10 @@ func ComputeHash(reader io.Reader, key string, rs gfile.FileAndRangeSpec) (strin
 		return "", fmt.Errorf("tth: keyed hashing not supported")
 	}
 
-	// Handle range specification
-	var r io.Reader = reader
-	var offset int64
-	if rs.Start > 0 {
-		if seeker, ok := reader.(io.Seeker); ok {
-			_, err := seeker.Seek(rs.Start, io.SeekStart)
-			if err != nil {
-				return "", fmt.Errorf("seeking to start offset %d: %w", rs.Start, err)
-			}
-		} else {
-			_, err := io.CopyN(io.Discard, reader, rs.Start)
-			if err != nil {
-				return "", fmt.Errorf("skipping to start offset %d: %w", rs.Start, err)
-			}
-		}
-		offset = rs.Start
-	}
-	if rs.End != -1 {
-		length := rs.End - rs.Start
-		if length <= 0 {
-			return "", fmt.Errorf("invalid range: start=%d, end=%d", rs.Start, rs.End)
-		}
-		r = io.LimitReader(reader, length)
+	// Use PrepareRangeReader for range handling
+	r, err := std.PrepareRangeReader(reader, rs)
+	if err != nil {
+		return "", err
 	}
 
 	// Read file in 1024-byte blocks
@@ -52,7 +34,7 @@ func ComputeHash(reader io.Reader, key string, rs gfile.FileAndRangeSpec) (strin
 			// Compute Tiger hash for the block
 			h := tiger.New()
 			if _, err := h.Write(buf[:n]); err != nil {
-				return "", fmt.Errorf("hashing block at offset %d: %w", totalRead+offset, err)
+				return "", fmt.Errorf("hashing block: %w", err)
 			}
 			leaf := h.Sum(nil) // 24 bytes
 			leaves = append(leaves, leaf)
@@ -62,7 +44,7 @@ func ComputeHash(reader io.Reader, key string, rs gfile.FileAndRangeSpec) (strin
 			break
 		}
 		if err != nil {
-			return "", fmt.Errorf("reading range at offset %d: %w", totalRead+offset, err)
+			return "", fmt.Errorf("reading range: %w", err)
 		}
 	}
 

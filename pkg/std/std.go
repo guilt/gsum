@@ -5,50 +5,58 @@ import (
 	"fmt"
 	"hash"
 	"io"
-	"os"
 	"strconv"
 	"strings"
 
-	"github.com/guilt/gsum/pkg/common"
 	gfile "github.com/guilt/gsum/pkg/file"
 	"github.com/guilt/gsum/pkg/log"
 )
 
 var logger = log.NewLogger()
 
-func Compute(reader io.Reader, key string, hashFunc func(key string) (hash.Hash, error), rs gfile.FileAndRangeSpec) (string, error) {
+// PrepareRangeReader returns an io.Reader limited to the specified range in rs.
+// If rs.Start/End are zero or -1, it returns the original reader.
+func PrepareRangeReader(reader io.Reader, rs gfile.FileAndRangeSpec) (io.Reader, error) {
+	var r io.Reader = reader
+	// Only handle if range is specified
+	if rs.Start > 0 {
+		if seeker, ok := reader.(io.Seeker); ok {
+			_, err := seeker.Seek(rs.Start, io.SeekStart)
+			if err != nil {
+				return nil, fmt.Errorf("seeking to start offset %d: %w", rs.Start, err)
+			}
+			// Do NOT assign seeker to r, since io.Seeker does not implement io.Reader
+			// Just continue using the original reader after seeking
+		} else {
+			// If not seekable, skip bytes
+			_, err := io.CopyN(io.Discard, r, rs.Start)
+			if err != nil {
+				return nil, fmt.Errorf("skipping to start offset %d: %w", rs.Start, err)
+			}
+		}
+	}
+	if rs.End != -1 && rs.End > rs.Start {
+		length := rs.End - rs.Start
+		if length <= 0 {
+			return nil, fmt.Errorf("invalid range: start=%d, end=%d", rs.Start, rs.End)
+		}
+		r = io.LimitReader(r, length)
+	}
+	return r, nil
+}
+
+func ComputeHash(reader io.Reader, key string, hashFunc func(key string) (hash.Hash, error), rs gfile.FileAndRangeSpec) (string, error) {
+	r, err := PrepareRangeReader(reader, rs)
+	if err != nil {
+		return "", err
+	}
+
 	h, err := hashFunc(key)
 	if err != nil {
 		return "", fmt.Errorf("cannot create hash: %s", err)
 	}
 
-	if rs.Start != 0 || rs.End != -1 {
-		file, ok := reader.(*common.LifecycleReader).Reader.(*os.File)
-		if !ok {
-			return "", fmt.Errorf("range-based hashing requires a file reader")
-		}
-		fileInfo, err := file.Stat()
-		if err != nil {
-			return "", fmt.Errorf("cannot stat file: %s", err)
-		}
-		fileSize := fileInfo.Size()
-		if fileSize == 0 {
-			return "", fmt.Errorf("cannot hash empty file")
-		}
-
-		start, end, err := rs.ToBytes(fileSize)
-		if err != nil {
-			return "", fmt.Errorf("invalid range: %s", err)
-		}
-
-		if _, err := file.Seek(start, io.SeekStart); err != nil {
-			return "", fmt.Errorf("cannot seek to start: %s", err)
-		}
-		reader = io.LimitReader(file, end-start)
-		logger.Debugf("Computing hash: range=%d-%d", start, end)
-	}
-
-	if _, err := io.Copy(h, reader); err != nil {
+	if _, err := io.Copy(h, r); err != nil {
 		return "", fmt.Errorf("hashing error: %s", err)
 	}
 	return hex.EncodeToString(h.Sum(nil)), nil
@@ -75,4 +83,9 @@ func ParseChecksumLine(line string) (hashValue string, fileAndRange gfile.FileAn
 	}
 	logger.Debugf("Parsed checksum: hash=%s, file=%s", hashValue, filePath)
 	return hashValue, fileAndRange, byteCount, nil
+}
+
+// BytesToHex returns the hex encoding of a byte slice.
+func BytesToHex(b []byte) string {
+	return hex.EncodeToString(b)
 }

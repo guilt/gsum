@@ -9,74 +9,46 @@ import (
 
 	"github.com/emersion/go-bcrypt"
 	gfile "github.com/guilt/gsum/pkg/file"
+	"github.com/guilt/gsum/pkg/std"
 )
 
-// ComputeHash hashes a file range with bcrypt, using a deterministic salt derived from key+data.
-func ComputeHash(reader io.Reader, key string, rs gfile.FileAndRangeSpec) (string, error) {
-	if key == "" {
-		return "", fmt.Errorf("bcrypt: key (password) is required")
+// ComputeHash returns a bcrypt hash of the file range, using a deterministic salt derived from key+data.
+func ComputeHash(r io.Reader, key string, rs gfile.FileAndRangeSpec) (string, error) {
+	// Prepare a reader for the requested range
+	r, err := std.PrepareRangeReader(r, rs)
+	if err != nil {
+		return "", err
 	}
 
-	// Handle range specification
-	var r io.Reader = reader
-	if rs.Start > 0 {
-		if seeker, ok := reader.(io.Seeker); ok {
-			_, err := seeker.Seek(rs.Start, io.SeekStart)
-			if err != nil {
-				return "", fmt.Errorf("seeking to start offset %d: %w", rs.Start, err)
-			}
-		} else {
-			_, err := io.CopyN(io.Discard, reader, rs.Start)
-			if err != nil {
-				return "", fmt.Errorf("skipping to start offset %d: %w", rs.Start, err)
-			}
-		}
-	}
-	if rs.End != -1 {
-		length := rs.End - rs.Start
-		if length <= 0 {
-			return "", fmt.Errorf("invalid range: start=%d, end=%d", rs.Start, rs.End)
-		}
-		r = io.LimitReader(reader, length)
-	}
-
-	// Read the range data
+	// Read all data from the range
 	data, err := io.ReadAll(r)
 	if err != nil {
-		return "", fmt.Errorf("reading range: %w", err)
+		return "", err
 	}
 
-	// Compute SHA-512 hash of key+data for salt and integrity
+	// Derive salt from key+data using SHA-512 (first 16 bytes)
 	h := sha512.New()
-	if _, err := h.Write([]byte(key)); err != nil {
-		return "", fmt.Errorf("hashing key: %w", err)
-	}
-	if _, err := h.Write(data); err != nil {
-		return "", fmt.Errorf("hashing data: %w", err)
-	}
-	sha512Hash := h.Sum(nil) // 64 bytes
+	h.Write([]byte(key))
+	h.Write(data)
+	salt := h.Sum(nil)[:16]
 
-	// Derive deterministic 16-byte salt from SHA-512 hash
-	salt := sha512Hash[:16]
-
-	// Truncate key+data to 8 bytes
+	// Prepare input for bcrypt (max 8 bytes, padded to 72)
 	input := key + string(data)
 	if len(input) > 8 {
 		input = input[:8]
 	}
-
-	// Create 72-byte input: 8-byte input + 64-byte SHA-512 hash
 	inputBytes := make([]byte, 72)
 	copy(inputBytes, input)
-	copy(inputBytes[8:], sha512Hash)
+	copy(inputBytes[8:], h.Sum(nil))
 
-	// Hash with bcrypt using deterministic salt
-	bcryptHash, err := bcrypt.GenerateFromPasswordAndSalt(inputBytes, bcrypt.DefaultCost, salt)
+	// Compute bcrypt hash
+	hash, err := bcrypt.GenerateFromPasswordAndSalt(inputBytes, bcrypt.DefaultCost, salt)
 	if err != nil {
-		return "", fmt.Errorf("computing bcrypt hash: %w", err)
+		return "", err
 	}
 
-	return string(bcryptHash), nil
+	// Return hash as string
+	return string(hash), nil
 }
 
 // ParseChecksumLine parses a bcrypt checksum line, expecting format: <hash> [<byteCount>] <file[#range]>

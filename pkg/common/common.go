@@ -92,12 +92,21 @@ type Hasher struct {
 var hashers = make(map[Algorithm]Hasher)
 
 func GetHasher(name string) (Hasher, error) {
+	// First try to find by exact match
 	for _, h := range hashers {
 		if strings.EqualFold(h.Name, name) {
 			return h, nil
 		}
 	}
-	return Hasher{}, fmt.Errorf("unsupported algorithm: %s", name)
+	// If not found, try without any dashes or underscores
+	simplifiedName := strings.ToLower(strings.ReplaceAll(strings.ReplaceAll(name, "-", ""), "_", ""))
+	for _, h := range hashers {
+		hashName := strings.ToLower(strings.ReplaceAll(strings.ReplaceAll(h.Name, "-", ""), "_", ""))
+		if hashName == simplifiedName {
+			return h, nil
+		}
+	}
+	return Hasher{}, fmt.Errorf("unsupported algorithm: %s (available: %s)", name, strings.Join(GetAllHasherNames(), ", "))
 }
 
 func GetDefaultHashAlgorithm() string {
