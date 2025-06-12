@@ -33,24 +33,17 @@ type config struct {
 
 // main is the entry point. Parses arguments, sets up hashing or verification, and dispatches work.
 func main() {
-	config := parseArgs()
-	hasher, err := hashers.GetHasher(config.algorithm)
-	if err != nil {
-		logger.Fatalf("Invalid algorithm: %s", config.algorithm)
-	}
-	if err := hasher.Validate(config.key); err != nil {
-		logger.Fatalf("Validation error: %s", err)
-	}
+	config, hasher := parseArgs()
 
 	progressFunc := selectProgressFunc(config.showProgress)
 	fileBatch := getFileBatch(config, hasher, config.verifyFile != "")
 
 	if config.verifyFile != "" {
-		handleVerification(hasher, fileBatch.inputSpecs, progressFunc, config)
+		verifyFileHashes(hasher, fileBatch.inputSpecs, progressFunc, config)
 		return
 	}
 
-	handleHashGeneration(hasher, fileBatch.inputSpecs, fileBatch.outputFiles, config, progressFunc)
+	generateFileHashes(hasher, fileBatch.inputSpecs, fileBatch.outputFiles, config, progressFunc)
 }
 
 // selectProgressFunc chooses the appropriate progress reporting function.
@@ -61,18 +54,8 @@ func selectProgressFunc(showProgress bool) lifecycle.ProgressFunc {
 	return lifecycle.MakeDefaultLifecycle
 }
 
-// handleVerification manages hash and GPG verification logic.
-func handleVerification(hasher hashers.Hasher, inputSpecs []common.FileAndRangeSpec, progressFunc lifecycle.ProgressFunc, config *config) {
-	verifyFileHashes(hasher, inputSpecs, progressFunc, config)
-}
-
-// handleHashGeneration manages hash generation and GPG signing logic.
-func handleHashGeneration(hasher hashers.Hasher, inputSpecs []common.FileAndRangeSpec, outputFiles []string, config *config, progressFunc lifecycle.ProgressFunc) {
-	generateFileHashes(hasher, inputSpecs, outputFiles, config, progressFunc)
-}
-
 // parseArgs parses all command-line flags and arguments into a config struct. Exits on error or missing required args.
-func parseArgs() *config {
+func parseArgs() (*config, hashers.Hasher) {
 	defaultAlgorithm := hashers.GetDefaultHashAlgorithm()
 	algorithm := flag.String("algo", defaultAlgorithm, "Hash algorithm ("+strings.Join(hashers.GetAllHasherNames(), ", ")+")")
 	verifyFile := flag.String("verify", "", "Verify hash or checksum file")
@@ -112,10 +95,15 @@ func parseArgs() *config {
 		config.verifyFile = spec.FilePath + hasher.Extension
 	}
 
+	if err := hasher.Validate(config.key); err != nil {
+		logger.Fatalf("Key Validation error: %s", err)
+	}
+
 	if len(config.inputArgs) == 0 {
 		logger.Fatalf("No input files provided")
 	}
-	return config
+
+	return config, hasher
 }
 
 // FileBatch holds parsed input file specs and output file names for batch operations.
@@ -218,7 +206,7 @@ func verifyFileHashes(hasher hashers.Hasher, inputSpecs []common.FileAndRangeSpe
 	hashMap, isHashMap := loadHashMap(hasher, cfg.verifyFile)
 
 	// Collect all hash files actually used for verification
-	hashFilesSet := make(map[string]struct{})
+	hashFilesSet := make(map[string]bool)
 
 	for _, fileSpec := range inputSpecs {
 		fileInfo, err := os.Stat(fileSpec.FilePath)
@@ -235,7 +223,7 @@ func verifyFileHashes(hasher hashers.Hasher, inputSpecs []common.FileAndRangeSpe
 
 		// Track the hash file used for this verification
 		if isHashMap {
-			hashFilesSet[cfg.verifyFile] = struct{}{}
+			hashFilesSet[cfg.verifyFile] = true
 		}
 	}
 	fmt.Println("Hash verification successful")

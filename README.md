@@ -213,7 +213,7 @@ Built by [Vibe coding](https://en.wikipedia.org/wiki/Vibe_coding).
 Pull requests, issues, and feature requests are welcome!
 Vibe code it, Vibe debug it, Vibe test it, Vibe PR it, Vibe everything it.
 
-* Author: [Grok 3.0](https://www.grok.com) and Debugger: Karthik Kumar Viswanathan
+* Authors: [Grok 3.0](https://www.grok.com), [ChatGPT 4.1](https://openai.com/)and Debugger: [Karthik Kumar Viswanathan](https://karthikkumar.org)
 * Web   : http://karthikkumar.org
 * Email : me@karthikkumar.org
 

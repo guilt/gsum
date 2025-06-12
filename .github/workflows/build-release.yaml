@@ -108,6 +108,7 @@ jobs:
       - name: Create checksums with gsum
         run: |
           cd dist
+          ../gsum-local -increment 10% gsum-* > incremental-checksums.txt
           ../gsum-local gsum-* > checksums.txt
 
       - name: Upload checksums
@@ -115,6 +116,12 @@ jobs:
         with:
           name: checksums
           path: dist/checksums.txt
+
+      - name: Upload incremental checksums
+        uses: actions/upload-artifact@v4
+        with:
+          name: incremental-checksums
+          path: dist/incremental-checksums.txt
 
   release:
     needs: [build, checksum]
@@ -133,11 +140,18 @@ jobs:
           name: checksums
           path: dist
 
+      - name: Download incremental checksums
+        uses: actions/download-artifact@v4
+        with:
+          name: incremental-checksums
+          path: dist
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
             dist/gsum-*
             dist/checksums.txt
+            dist/incremental-checksums.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
