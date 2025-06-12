@@ -2,14 +2,15 @@ package ktwelve
 
 import (
 	"crypto/sha512"
-	gfile "github.com/guilt/gsum/pkg/file"
+	"io"
+
+	"github.com/guilt/gsum/pkg/common"
 	"github.com/guilt/gsum/pkg/std"
 	k12 "github.com/mimoo/GoKangarooTwelve/K12"
-	"io"
 )
 
 // ComputeHash returns a KangarooTwelve hash of the file range, salted with a SHA-512 hash of the key.
-func ComputeHash(r io.Reader, key string, rs gfile.FileAndRangeSpec) (string, error) {
+func ComputeHash(r io.Reader, key string, rs common.FileAndRangeSpec) (string, error) {
 	// Prepare a reader for the requested range
 	r, err := std.PrepareRangeReader(r, rs)
 	if err != nil {

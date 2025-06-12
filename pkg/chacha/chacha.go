@@ -4,16 +4,14 @@ import (
 	"fmt"
 	"io"
 
-	gfile "github.com/guilt/gsum/pkg/file"
-	"github.com/guilt/gsum/pkg/log"
+	"github.com/guilt/gsum/pkg/common"
+
 	"github.com/guilt/gsum/pkg/std"
 
 	"golang.org/x/crypto/chacha20poly1305"
 )
 
-var logger = log.NewLogger()
-
-func Compute(reader io.Reader, key string, rs gfile.FileAndRangeSpec) (string, error) {
+func Compute(reader io.Reader, key string, rs common.FileAndRangeSpec) (string, error) {
 	if len(key) < 32 {
 		return "", fmt.Errorf("key must be at least 32 bytes")
 	}

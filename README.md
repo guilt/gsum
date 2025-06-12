@@ -36,7 +36,7 @@ gsum example.txt
 
 Verify a file:
 ```shell
-gsum -verify example.txt.sha256 example.txt
+gsum -verify example.txt
 ```
 
 ### Advanced Usages
@@ -51,6 +51,11 @@ Hash a file using Kangaroo12:
 gsum -algo=kangaroo12 example.txt
 ```
 
+Verify a file using Kangaroo12:
+```shell
+gsum -algo=kangaroo12 -verify example.txt
+```
+
 Use SipHash with a 16-byte key:
 ```shell
 gsum -algo=siphash -key=1234567890123456 example.txt
@@ -58,22 +63,40 @@ gsum -algo=siphash -key=1234567890123456 example.txt
 
 Hash a specific range (10%-20%) of a file:
 ```shell
-gsum -progress example.txt#10%-20%
+gsum example.txt#10%-20%
 ```
 
-Compute hashes for 10% increments of a file:
+Verify a specific range (10%-20%) of a file:
+```shell
+gsum -verify example.txt#10%-20%
+```
+
+Compute SHA1 hashes for 10% increments of a file:
 ```shell
 gsum -algo=sha1 -increment=10% -progress example.txt
 ```
-
-### Hash Verification
 
 Verify a hash against a provided value as argument:
 ```shell
 gsum -verify 80a3721188e40218b08b26776bc53bdae81e4784fff71d71450a197319cba113 example.txt
 ```
 
+Hash multiple files to a single checksum file:
+```shell
+gsum -output=SHA256SUM example.txt example2.txt example3.txt
+```
+
 Verify checksums from a file:
+```shell
+gsum -verify=SHA256SUM example.txt
+```
+
+Generate SHA256SUM file with increments of 10% of a file:
+```shell
+gsum -increment=10% -output=SHA256SUM example.txt example2.txt
+```
+
+Verify SHA256SUM file with the generated hashes of the increment of 10% of a file:
 ```shell
 gsum -verify=SHA256SUM example.txt
 ```

@@ -8,12 +8,12 @@ import (
 	"strings"
 
 	"github.com/emersion/go-bcrypt"
-	gfile "github.com/guilt/gsum/pkg/file"
+	"github.com/guilt/gsum/pkg/common"
 	"github.com/guilt/gsum/pkg/std"
 )
 
 // ComputeHash returns a bcrypt hash of the file range, using a deterministic salt derived from key+data.
-func ComputeHash(r io.Reader, key string, rs gfile.FileAndRangeSpec) (string, error) {
+func ComputeHash(r io.Reader, key string, rs common.FileAndRangeSpec) (string, error) {
 	// Prepare a reader for the requested range
 	r, err := std.PrepareRangeReader(r, rs)
 	if err != nil {
@@ -52,10 +52,10 @@ func ComputeHash(r io.Reader, key string, rs gfile.FileAndRangeSpec) (string, er
 }
 
 // ParseChecksumLine parses a bcrypt checksum line, expecting format: <hash> [<byteCount>] <file[#range]>
-func ParseChecksumLine(line string) (string, gfile.FileAndRangeSpec, int64, error) {
+func ParseChecksumLine(line string) (string, common.FileAndRangeSpec, int64, error) {
 	parts := strings.Fields(line)
 	if len(parts) < 2 || len(parts) > 3 {
-		return "", gfile.FileAndRangeSpec{}, 0, fmt.Errorf("invalid bcrypt line: %s", line)
+		return "", common.FileAndRangeSpec{}, 0, fmt.Errorf("invalid bcrypt line: %s", line)
 	}
 
 	hashValue := parts[0]
@@ -65,7 +65,7 @@ func ParseChecksumLine(line string) (string, gfile.FileAndRangeSpec, int64, erro
 		!strings.HasPrefix(hashValue, "$2x$") &&
 		!strings.HasPrefix(hashValue, "$2y$") &&
 		!strings.HasPrefix(hashValue, "$2b$") {
-		return "", gfile.FileAndRangeSpec{}, 0, fmt.Errorf("invalid bcrypt hash: %s", hashValue)
+		return "", common.FileAndRangeSpec{}, 0, fmt.Errorf("invalid bcrypt hash: %s", hashValue)
 	}
 
 	var byteCount int64
@@ -74,7 +74,7 @@ func ParseChecksumLine(line string) (string, gfile.FileAndRangeSpec, int64, erro
 		// Format: <hash> <byteCount> <file[#range]>
 		bc, err := strconv.ParseInt(parts[1], 10, 64)
 		if err != nil {
-			return "", gfile.FileAndRangeSpec{}, 0, fmt.Errorf("invalid byte count: %s", parts[1])
+			return "", common.FileAndRangeSpec{}, 0, fmt.Errorf("invalid byte count: %s", parts[1])
 		}
 		byteCount = bc
 		fileIndex = 2
@@ -84,9 +84,9 @@ func ParseChecksumLine(line string) (string, gfile.FileAndRangeSpec, int64, erro
 		fileIndex = 1
 	}
 
-	rs, err := gfile.ParseFilePath(parts[fileIndex])
-	if err != nil {
-		return "", gfile.FileAndRangeSpec{}, 0, fmt.Errorf("invalid file path: %w", err)
+	var rs common.FileAndRangeSpec
+	if err := rs.Parse(parts[fileIndex]); err != nil {
+		return "", common.FileAndRangeSpec{}, 0, fmt.Errorf("invalid file path: %w", err)
 	}
 
 	return hashValue, rs, byteCount, nil

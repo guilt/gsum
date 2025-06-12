@@ -2,14 +2,15 @@ package argon2
 
 import (
 	"crypto/sha512"
-	"github.com/guilt/gsum/pkg/file"
+	"io"
+
+	"github.com/guilt/gsum/pkg/common"
 	"github.com/guilt/gsum/pkg/std"
 	"golang.org/x/crypto/argon2"
-	"io"
 )
 
 // ComputeHash returns an Argon2id hash of the file range, salted with a SHA-512 hash of the key.
-func ComputeHash(r io.Reader, key string, rs file.FileAndRangeSpec) (string, error) {
+func ComputeHash(r io.Reader, key string, rs common.FileAndRangeSpec) (string, error) {
 	// Prepare a reader for the requested range
 	r, err := std.PrepareRangeReader(r, rs)
 	if err != nil {

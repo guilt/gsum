@@ -6,12 +6,12 @@ import (
 	"io"
 
 	"github.com/cxmcc/tiger"
-	gfile "github.com/guilt/gsum/pkg/file"
+	"github.com/guilt/gsum/pkg/common"
 	std "github.com/guilt/gsum/pkg/std"
 )
 
 // ComputeHash computes the TigerTreeHash (TTH) of a file range.
-func ComputeHash(reader io.Reader, key string, rs gfile.FileAndRangeSpec) (string, error) {
+func ComputeHash(reader io.Reader, key string, rs common.FileAndRangeSpec) (string, error) {
 	if key != "" {
 		return "", fmt.Errorf("tth: keyed hashing not supported")
 	}

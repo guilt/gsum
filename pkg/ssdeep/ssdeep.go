@@ -5,12 +5,12 @@ import (
 	"io"
 
 	"github.com/glaslos/ssdeep"
-	gfile "github.com/guilt/gsum/pkg/file"
+	"github.com/guilt/gsum/pkg/common"
 	"github.com/guilt/gsum/pkg/std"
 )
 
 // ComputeHash generates an ssdeep fuzzy hash for a file range. Keyed hashing not supported.
-func ComputeHash(r io.Reader, key string, rs gfile.FileAndRangeSpec) (string, error) {
+func ComputeHash(r io.Reader, key string, rs common.FileAndRangeSpec) (string, error) {
 	if key != "" {
 		return "", fmt.Errorf("ssdeep: keyed hashing not supported")
 	}

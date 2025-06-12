@@ -2,33 +2,26 @@ package lifecycle
 
 import (
 	"fmt"
-	"path/filepath"
-
-	"github.com/schollz/progressbar/v3"
 
 	"github.com/guilt/gsum/pkg/common"
+	"github.com/schollz/progressbar/v3"
 )
 
-// DefaultLifecycle is a no-op lifecycle.
-var DefaultLifecycle = common.FileLifecycle{
-	OnStart: func(offset1, offset2 int64) {},
-	OnChunk: func(bytes int64) {},
-	OnEnd:   func() {},
-}
+// ProgressFunc creates a FileLifecycle for a file range and size.
+type ProgressFunc func(rs common.FileAndRangeSpec, size int64) common.FileLifecycle
 
 // MakeDefaultLifecycle returns a no-op lifecycle matching the progressFunc signature.
-func MakeDefaultLifecycle(filePath string, size, start, end int64) common.FileLifecycle {
-	return DefaultLifecycle
+func MakeDefaultLifecycle(rs common.FileAndRangeSpec, size int64) common.FileLifecycle {
+	return common.FileLifecycle{
+		OnStart: func(offset1, offset2 int64) {},
+		OnChunk: func(bytes int64) {},
+		OnEnd:   func() {},
+	}
 }
 
 // MakeProgressBars returns a lifecycle with progress bar functionality.
-func MakeProgressBars(filePath string, size, start, end int64) common.FileLifecycle {
-	var desc string
-	if start == 0 && end == -1 {
-		desc = fmt.Sprintf("Hashing %s", filepath.Base(filePath))
-	} else {
-		desc = fmt.Sprintf("Hashing %s#%d-%d", filepath.Base(filePath), start, end)
-	}
+func MakeProgressBars(rs common.FileAndRangeSpec, size int64) common.FileLifecycle {
+	desc := fmt.Sprintf("Hashing %s", rs.String())
 	bar := progressbar.DefaultBytes(size, desc)
 	return common.FileLifecycle{
 		OnStart: func(offset1, offset2 int64) {},

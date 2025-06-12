@@ -7,12 +7,12 @@ import (
 
 	"github.com/dchest/siphash"
 
-	gfile "github.com/guilt/gsum/pkg/file"
+	"github.com/guilt/gsum/pkg/common"
 	"github.com/guilt/gsum/pkg/std"
 )
 
 // ComputeHash computes the SipHash-2-4 of the file range with a 16-byte key.
-func ComputeHash(r io.Reader, key string, rs gfile.FileAndRangeSpec) (string, error) {
+func ComputeHash(r io.Reader, key string, rs common.FileAndRangeSpec) (string, error) {
 	if len(key) != 16 {
 		return "", fmt.Errorf("siphash: key must be 16 bytes")
 	}

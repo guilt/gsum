@@ -2,36 +2,46 @@ package gpg
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
-
-	"github.com/guilt/gsum/pkg/log"
 )
 
-// logger is the package-level logger for debug and error messages.
-var logger = log.NewLogger()
+// VerifyGPG verifies GPG signatures for multiple checksum files.
+func VerifyGPG(hashFiles []string, gpgFile string) error {
+	if len(hashFiles) != 1 {
+		return fmt.Errorf("GPG verification needs exactly one hash file")
+	}
 
-// VerifyGPG verifies a GPG signature for a checksum file.
-func VerifyGPG(checksumFile, gpgFile string) error {
-	cmd := exec.Command("gpg", "--verify", gpgFile, checksumFile)
+	if _, err := os.Stat(gpgFile); err != nil {
+		return fmt.Errorf("GPG signature file does not exist: %s", gpgFile)
+	}
+
+	hashFile := hashFiles[0]
+	cmd := exec.Command("gpg", "--verify", gpgFile, hashFile)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("GPG verification failed: %w; output: %s", err, output)
+		return fmt.Errorf("GPG verification failed for: %s (input: %s) (gpg: %s)", hashFile, output, gpgFile)
 	}
-	fmt.Println("GPG signature verified successfully")
+
 	return nil
 }
 
-// GenerateGPG generates a GPG signature for a hash file.
+// GenerateGPG signs a hash file with GPG, producing a signature for each.
 func GenerateGPG(hashFiles []string, gpgFile string) error {
-	if len(hashFiles) == 0 {
-		return fmt.Errorf("no hash files to sign")
+	if len(hashFiles) != 1 {
+		return fmt.Errorf("GPG signing supports only one hash file")
 	}
-	checksumFile := hashFiles[0]
-	cmd := exec.Command("gpg", "--sign", checksumFile, "--output", gpgFile)
+
+	if _, err := os.Stat(gpgFile); err == nil {
+		return fmt.Errorf("GPG signature file already exists: %s", gpgFile)
+	}
+
+	hashFile := hashFiles[0]
+	cmd := exec.Command("gpg", "--output", gpgFile, "--armor", "--detach-sign", hashFile)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("GPG signing failed: %w; output: %s", err, output)
+		return fmt.Errorf("GPG signing failed for: %s (output: %s) (gpg: %s)", hashFile, output, gpgFile)
 	}
-	fmt.Printf("GPG signature created: %s\n", gpgFile)
+
 	return nil
 }
