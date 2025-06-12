@@ -11,15 +11,14 @@ import (
 
 // ComputeHash derives a key from a file range with PBKDF2, using a deterministic SHA-512 salt and SHA-512 hash.
 // ComputeHash returns a PBKDF2 hash of the file range, salted with a SHA-512 hash of the key.
-func ComputeHash(r io.Reader, key string, rs common.FileAndRangeSpec) (string, error) {
-	// Prepare a reader for the requested range
-	r, err := std.PrepareRangeReader(r, rs)
+func ComputeHash(reader io.Reader, key string, fileAndRangeSpec common.FileAndRangeSpec) (string, error) {
+	rangeReader, err := std.PrepareRangeReader(reader, fileAndRangeSpec)
 	if err != nil {
 		return "", err
 	}
 
 	// Read all data from the range
-	data, err := io.ReadAll(r)
+	data, err := io.ReadAll(rangeReader)
 	if err != nil {
 		return "", err
 	}

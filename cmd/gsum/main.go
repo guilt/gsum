@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -176,29 +175,20 @@ func getFileBatch(config *config, hasher hashers.Hasher, isVerify bool) fileBatc
 // computeHash computes the hash of a file (or range within a file), using the provided hasher and lifecycle/progress tracker.
 // This is a utility for DRY hash computation with progress tracking.
 func computeHashForFileAndRange(filePath string, hasher hashers.Hasher, rs common.FileAndRangeSpec, key string, lifeCycle common.FileLifecycle) (string, error) {
-	fh, err := os.Open(filePath)
+	fileHandle, err := os.Open(filePath)
 	if err != nil {
 		return "", err
 	}
-	defer fh.Close()
+	defer fileHandle.Close()
 
-	fileInfo, err := fh.Stat()
+	start, end, err := rs.ToBytes()
 	if err != nil {
 		return "", err
 	}
 
-	start, end, err := rs.ToBytes(fileInfo.Size())
-	if err != nil {
-		return "", err
-	}
-	if _, err := fh.Seek(start, io.SeekStart); err != nil {
-		return "", err
-	}
-	lifeCycle.OnStart(rs.Start, rs.End)
-	limitedReader := io.LimitReader(fh, end-start)
-	reader := &common.LifecycleReader{Reader: limitedReader, Lifecycle: lifeCycle}
+	lifeCycle.OnStart(start, end)
 	defer lifeCycle.OnEnd()
-	return hasher.Compute(reader, key, rs)
+	return hasher.Compute(fileHandle, key, rs)
 }
 
 // Loads and parses checksums, computes hashes, and compares results. Exits on mismatch.
@@ -396,29 +386,4 @@ func generateIncrementalHashes(hasher hashers.Hasher, inputSpecs []common.FileAn
 			logger.Fatalf("failed to write hashes: %s", err)
 		}
 	}
-}
-
-// generateHashForFile computes the hash for a single file and writes it to output if needed.
-// generateHashesForSpecs computes hashes for a set of (file, range) specs, writes them to output if needed, and prints them.
-func generateHashesForSpecs(filePath string, specs []common.FileAndRangeSpec, outputPath string, hasher hashers.Hasher, key string, fileSize int64, addComment bool, progressFunc lifecycle.ProgressFunc) error {
-	pairs := make([]file.CheckSumSpec, 0, len(specs))
-	for _, rs := range specs {
-		rangeSize := rs.GetRangeSize(fileSize)
-		lifeCycle := progressFunc(rs, rangeSize)
-		hash, err := computeHashForFileAndRange(filePath, hasher, rs, key, lifeCycle)
-		if err != nil {
-			return fmt.Errorf("failed to compute hash for: %s: %s", rs.String(), err)
-		}
-		pairs = append(pairs, file.CheckSumSpec{HashValue: hash, FileAndRange: rs, ExpectedByteCount: rangeSize})
-	}
-	if outputPath != "" {
-		err := file.WriteChecksums(outputPath, pairs, addComment)
-		if err != nil {
-			return fmt.Errorf("failed to write hashes: %s", err)
-		}
-	}
-	for _, p := range pairs {
-		fmt.Printf("%s %d %s\n", p.HashValue, p.ExpectedByteCount, p.FileAndRange.String())
-	}
-	return nil
 }

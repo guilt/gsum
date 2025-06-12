@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"os"
 	"strconv"
 	"strings"
 )
@@ -298,7 +299,12 @@ func (rs *FileAndRangeSpec) Parse(s string) error {
 
 // ToBytes converts the FileAndRangeSpec's range (including percent) to absolute byte offsets for a file of the given size.
 // When IsPercent is true, Start and End are stored as basis points (0-10000).
-func (rs *FileAndRangeSpec) ToBytes(fileSize int64) (start, end int64, err error) {
+func (rs *FileAndRangeSpec) ToBytes() (start, end int64, err error) {
+	fileInfo, err := os.Stat(rs.FilePath)
+	if err != nil {
+		return 0, 0, err
+	}
+	fileSize := fileInfo.Size()
 	start, end = rs.getStartEndBytes(fileSize)
 	if start > end {
 		return 0, 0, fmt.Errorf("invalid range: %d-%d", start, end)

@@ -11,13 +11,13 @@ import (
 )
 
 // ComputeHash computes the TigerTreeHash (TTH) of a file range.
-func ComputeHash(reader io.Reader, key string, rs common.FileAndRangeSpec) (string, error) {
+func ComputeHash(reader io.Reader, key string, fileAndRangeSpec common.FileAndRangeSpec) (string, error) {
 	if key != "" {
 		return "", fmt.Errorf("tth: keyed hashing not supported")
 	}
 
 	// Use PrepareRangeReader for range handling
-	r, err := std.PrepareRangeReader(reader, rs)
+	rangeReader, err := std.PrepareRangeReader(reader, fileAndRangeSpec)
 	if err != nil {
 		return "", err
 	}
@@ -29,7 +29,7 @@ func ComputeHash(reader io.Reader, key string, rs common.FileAndRangeSpec) (stri
 	var totalRead int64
 
 	for {
-		n, err := r.Read(buf)
+		n, err := rangeReader.Read(buf)
 		if n > 0 {
 			// Compute Tiger hash for the block
 			h := tiger.New()

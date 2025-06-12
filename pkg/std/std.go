@@ -9,33 +9,42 @@ import (
 	"strings"
 
 	"github.com/guilt/gsum/pkg/common"
+	"github.com/guilt/gsum/pkg/log"
 )
+
+var logger = log.NewLogger()
 
 // PrepareRangeReader returns an io.Reader limited to the specified range in rs.
 // If rs.Start/End are zero or -1, it returns the original reader.
 func PrepareRangeReader(reader io.Reader, rs common.FileAndRangeSpec) (io.Reader, error) {
 	var r io.Reader = reader
+
 	// Only handle if range is specified
-	if rs.Start > 0 {
+	start, end, err := rs.ToBytes()
+	if err != nil {
+		return nil, fmt.Errorf("invalid range: %v", err)
+	}
+
+	if start > 0 {
 		if seeker, ok := reader.(io.Seeker); ok {
-			_, err := seeker.Seek(rs.Start, io.SeekStart)
+			_, err := seeker.Seek(start, io.SeekStart)
 			if err != nil {
-				return nil, fmt.Errorf("seeking to start offset %d: %w", rs.Start, err)
+				return nil, fmt.Errorf("seeking to start offset %d: %w", start, err)
 			}
 			// Do NOT assign seeker to r, since io.Seeker does not implement io.Reader
 			// Just continue using the original reader after seeking
 		} else {
 			// If not seekable, skip bytes
-			_, err := io.CopyN(io.Discard, r, rs.Start)
+			_, err := io.CopyN(io.Discard, r, start)
 			if err != nil {
-				return nil, fmt.Errorf("skipping to start offset %d: %w", rs.Start, err)
+				return nil, fmt.Errorf("skipping to start offset %d: %w", start, err)
 			}
 		}
 	}
-	if rs.End != -1 && rs.End > rs.Start {
-		length := rs.End - rs.Start
+	if end > start {
+		length := end - start
 		if length <= 0 {
-			return nil, fmt.Errorf("invalid range: start=%d, end=%d", rs.Start, rs.End)
+			return nil, fmt.Errorf("invalid range: start=%d, end=%d", start, end)
 		}
 		r = io.LimitReader(r, length)
 	}

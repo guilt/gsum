@@ -15,6 +15,7 @@ import (
 	"crypto/sha1"
 	"crypto/sha256"
 	"crypto/sha512"
+
 	"golang.org/x/crypto/blake2b"
 	"golang.org/x/crypto/blake2s"
 	"golang.org/x/crypto/md4"
@@ -118,10 +119,10 @@ func init() {
 				if key != "" {
 					return "", fmt.Errorf("streebog256: keyed hashing not supported")
 				}
-				return std.ComputeHash(reader, key, func(_ string) (hash.Hash, error) { return streebog.New256(), nil }, fileAndRangeSpec)
+				return std.ComputeHash(reader, key, func(key string) (hash.Hash, error) { return streebog.New256(), nil }, fileAndRangeSpec)
 			},
 			OutputLen: 64, // 32 bytes = 64 hex
-			Validate:  func(_ string) error { return nil },
+			Validate:  func(key string) error { return nil },
 			AcceptsFile: func(fileName string) bool {
 				return strings.ToLower(filepath.Base(fileName)) == "streebog256sum" || strings.ToLower(filepath.Ext(fileName)) == ".streebog256"
 			},
@@ -136,10 +137,10 @@ func init() {
 				if key != "" {
 					return "", fmt.Errorf("streebog512: keyed hashing not supported")
 				}
-				return std.ComputeHash(reader, key, func(_ string) (hash.Hash, error) { return streebog.New512(), nil }, fileAndRangeSpec)
+				return std.ComputeHash(reader, key, func(key string) (hash.Hash, error) { return streebog.New512(), nil }, fileAndRangeSpec)
 			},
 			OutputLen: 128, // 64 bytes = 128 hex
-			Validate:  func(_ string) error { return nil },
+			Validate:  func(key string) error { return nil },
 			AcceptsFile: func(fileName string) bool {
 				return strings.ToLower(filepath.Base(fileName)) == "streebog512sum" || strings.ToLower(filepath.Ext(fileName)) == ".streebog512"
 			},
@@ -151,10 +152,10 @@ func init() {
 			Extension: ".crc32",
 			Keyed:     false,
 			Compute: func(reader io.Reader, key string, fileAndRangeSpec common.FileAndRangeSpec) (string, error) {
-				return std.ComputeHash(reader, key, func(_ string) (hash.Hash, error) { return crc32.NewIEEE(), nil }, fileAndRangeSpec)
+				return std.ComputeHash(reader, key, func(key string) (hash.Hash, error) { return crc32.NewIEEE(), nil }, fileAndRangeSpec)
 			},
 			OutputLen: 8,
-			Validate:  func(_ string) error { return nil },
+			Validate:  func(key string) error { return nil },
 			AcceptsFile: func(fileName string) bool {
 				return strings.ToLower(filepath.Base(fileName)) == "crc32sum" || strings.ToLower(filepath.Ext(fileName)) == ".crc32"
 			},
@@ -184,12 +185,12 @@ func init() {
 			Extension: ".cksum",
 			Keyed:     false,
 			Compute: func(reader io.Reader, key string, fileAndRangeSpec common.FileAndRangeSpec) (string, error) {
-				return std.ComputeHash(reader, key, func(_ string) (hash.Hash, error) {
+				return std.ComputeHash(reader, key, func(key string) (hash.Hash, error) {
 					return crc32.New(crc32.MakeTable(crc32.Castagnoli)), nil
 				}, fileAndRangeSpec)
 			},
 			OutputLen: 8,
-			Validate:  func(_ string) error { return nil },
+			Validate:  func(key string) error { return nil },
 			AcceptsFile: func(fileName string) bool {
 				return strings.ToLower(filepath.Base(fileName)) == "cksum" || strings.ToLower(filepath.Ext(fileName)) == ".cksum"
 			},
@@ -219,10 +220,10 @@ func init() {
 			Extension: ".md4",
 			Keyed:     false,
 			Compute: func(reader io.Reader, key string, fileAndRangeSpec common.FileAndRangeSpec) (string, error) {
-				return std.ComputeHash(reader, key, func(_ string) (hash.Hash, error) { return md4.New(), nil }, fileAndRangeSpec)
+				return std.ComputeHash(reader, key, func(key string) (hash.Hash, error) { return md4.New(), nil }, fileAndRangeSpec)
 			},
 			OutputLen: 32,
-			Validate:  func(_ string) error { return nil },
+			Validate:  func(key string) error { return nil },
 			AcceptsFile: func(fileName string) bool {
 				return strings.ToLower(filepath.Base(fileName)) == "md4sum" || strings.ToLower(filepath.Ext(fileName)) == ".md4"
 			},
@@ -234,10 +235,10 @@ func init() {
 			Extension: ".md5",
 			Keyed:     false,
 			Compute: func(reader io.Reader, key string, fileAndRangeSpec common.FileAndRangeSpec) (string, error) {
-				return std.ComputeHash(reader, key, func(_ string) (hash.Hash, error) { return md5.New(), nil }, fileAndRangeSpec)
+				return std.ComputeHash(reader, key, func(key string) (hash.Hash, error) { return md5.New(), nil }, fileAndRangeSpec)
 			},
 			OutputLen: 32,
-			Validate:  func(_ string) error { return nil },
+			Validate:  func(key string) error { return nil },
 			AcceptsFile: func(fileName string) bool {
 				return strings.ToLower(filepath.Base(fileName)) == "md5sum" || strings.ToLower(filepath.Base(fileName)) == "md5sums" || strings.ToLower(filepath.Ext(fileName)) == ".md5"
 			},
@@ -249,10 +250,10 @@ func init() {
 			Extension: ".sha1",
 			Keyed:     false,
 			Compute: func(reader io.Reader, key string, fileAndRangeSpec common.FileAndRangeSpec) (string, error) {
-				return std.ComputeHash(reader, key, func(_ string) (hash.Hash, error) { return sha1.New(), nil }, fileAndRangeSpec)
+				return std.ComputeHash(reader, key, func(key string) (hash.Hash, error) { return sha1.New(), nil }, fileAndRangeSpec)
 			},
 			OutputLen: 40,
-			Validate:  func(_ string) error { return nil },
+			Validate:  func(key string) error { return nil },
 			AcceptsFile: func(fileName string) bool {
 				base := strings.ToLower(filepath.Base(fileName))
 				ext := strings.ToLower(filepath.Ext(fileName))
@@ -266,10 +267,10 @@ func init() {
 			Extension: ".sha224",
 			Keyed:     false,
 			Compute: func(reader io.Reader, key string, fileAndRangeSpec common.FileAndRangeSpec) (string, error) {
-				return std.ComputeHash(reader, key, func(_ string) (hash.Hash, error) { return sha256.New224(), nil }, fileAndRangeSpec)
+				return std.ComputeHash(reader, key, func(key string) (hash.Hash, error) { return sha256.New224(), nil }, fileAndRangeSpec)
 			},
 			OutputLen: 56,
-			Validate:  func(_ string) error { return nil },
+			Validate:  func(key string) error { return nil },
 			AcceptsFile: func(fileName string) bool {
 				return strings.ToLower(filepath.Base(fileName)) == "sha224sum" || strings.ToLower(filepath.Ext(fileName)) == ".sha224"
 			},
@@ -281,10 +282,10 @@ func init() {
 			Extension: ".sha256",
 			Keyed:     false,
 			Compute: func(reader io.Reader, key string, fileAndRangeSpec common.FileAndRangeSpec) (string, error) {
-				return std.ComputeHash(reader, key, func(_ string) (hash.Hash, error) { return sha256.New(), nil }, fileAndRangeSpec)
+				return std.ComputeHash(reader, key, func(key string) (hash.Hash, error) { return sha256.New(), nil }, fileAndRangeSpec)
 			},
 			OutputLen: 64,
-			Validate:  func(_ string) error { return nil },
+			Validate:  func(key string) error { return nil },
 			AcceptsFile: func(fileName string) bool {
 				return strings.ToLower(filepath.Base(fileName)) == "sha256sum" || strings.ToLower(filepath.Base(fileName)) == "sha256sums" || strings.ToLower(filepath.Ext(fileName)) == ".sha256"
 			},
@@ -296,10 +297,10 @@ func init() {
 			Extension: ".sha384",
 			Keyed:     false,
 			Compute: func(reader io.Reader, key string, fileAndRangeSpec common.FileAndRangeSpec) (string, error) {
-				return std.ComputeHash(reader, key, func(_ string) (hash.Hash, error) { return sha512.New384(), nil }, fileAndRangeSpec)
+				return std.ComputeHash(reader, key, func(key string) (hash.Hash, error) { return sha512.New384(), nil }, fileAndRangeSpec)
 			},
 			OutputLen: 96,
-			Validate:  func(_ string) error { return nil },
+			Validate:  func(key string) error { return nil },
 			AcceptsFile: func(fileName string) bool {
 				return strings.ToLower(filepath.Base(fileName)) == "sha384sum" || strings.ToLower(filepath.Ext(fileName)) == ".sha384"
 			},
@@ -311,10 +312,10 @@ func init() {
 			Extension: ".sha512",
 			Keyed:     false,
 			Compute: func(reader io.Reader, key string, fileAndRangeSpec common.FileAndRangeSpec) (string, error) {
-				return std.ComputeHash(reader, key, func(_ string) (hash.Hash, error) { return sha512.New(), nil }, fileAndRangeSpec)
+				return std.ComputeHash(reader, key, func(key string) (hash.Hash, error) { return sha512.New(), nil }, fileAndRangeSpec)
 			},
 			OutputLen: 128,
-			Validate:  func(_ string) error { return nil },
+			Validate:  func(key string) error { return nil },
 			AcceptsFile: func(fileName string) bool {
 				return strings.ToLower(filepath.Base(fileName)) == "sha512sum" || strings.ToLower(filepath.Base(fileName)) == "sha512sums" || strings.ToLower(filepath.Ext(fileName)) == ".sha512"
 			},
@@ -326,10 +327,10 @@ func init() {
 			Extension: ".sha512-224",
 			Keyed:     false,
 			Compute: func(reader io.Reader, key string, fileAndRangeSpec common.FileAndRangeSpec) (string, error) {
-				return std.ComputeHash(reader, key, func(_ string) (hash.Hash, error) { return sha512.New512_224(), nil }, fileAndRangeSpec)
+				return std.ComputeHash(reader, key, func(key string) (hash.Hash, error) { return sha512.New512_224(), nil }, fileAndRangeSpec)
 			},
 			OutputLen: 56,
-			Validate:  func(_ string) error { return nil },
+			Validate:  func(key string) error { return nil },
 			AcceptsFile: func(fileName string) bool {
 				return strings.ToLower(filepath.Base(fileName)) == "sha512-224sum" || strings.ToLower(filepath.Ext(fileName)) == ".sha512-224"
 			},
@@ -341,10 +342,10 @@ func init() {
 			Extension: ".sha512-256",
 			Keyed:     false,
 			Compute: func(reader io.Reader, key string, fileAndRangeSpec common.FileAndRangeSpec) (string, error) {
-				return std.ComputeHash(reader, key, func(_ string) (hash.Hash, error) { return sha512.New512_256(), nil }, fileAndRangeSpec)
+				return std.ComputeHash(reader, key, func(key string) (hash.Hash, error) { return sha512.New512_256(), nil }, fileAndRangeSpec)
 			},
 			OutputLen: 64,
-			Validate:  func(_ string) error { return nil },
+			Validate:  func(key string) error { return nil },
 			AcceptsFile: func(fileName string) bool {
 				return strings.ToLower(filepath.Base(fileName)) == "sha512-256sum" || strings.ToLower(filepath.Ext(fileName)) == ".sha512-256"
 			},
@@ -356,10 +357,10 @@ func init() {
 			Extension: ".sha3-224",
 			Keyed:     false,
 			Compute: func(reader io.Reader, key string, fileAndRangeSpec common.FileAndRangeSpec) (string, error) {
-				return std.ComputeHash(reader, key, func(_ string) (hash.Hash, error) { return sha3.New224(), nil }, fileAndRangeSpec)
+				return std.ComputeHash(reader, key, func(key string) (hash.Hash, error) { return sha3.New224(), nil }, fileAndRangeSpec)
 			},
 			OutputLen: 56,
-			Validate:  func(_ string) error { return nil },
+			Validate:  func(key string) error { return nil },
 			AcceptsFile: func(fileName string) bool {
 				return strings.ToLower(filepath.Base(fileName)) == "sha3-224sum" || strings.ToLower(filepath.Ext(fileName)) == ".sha3-224"
 			},
@@ -371,10 +372,10 @@ func init() {
 			Extension: ".sha3-256",
 			Keyed:     false,
 			Compute: func(reader io.Reader, key string, fileAndRangeSpec common.FileAndRangeSpec) (string, error) {
-				return std.ComputeHash(reader, key, func(_ string) (hash.Hash, error) { return sha3.New256(), nil }, fileAndRangeSpec)
+				return std.ComputeHash(reader, key, func(key string) (hash.Hash, error) { return sha3.New256(), nil }, fileAndRangeSpec)
 			},
 			OutputLen: 64,
-			Validate:  func(_ string) error { return nil },
+			Validate:  func(key string) error { return nil },
 			AcceptsFile: func(fileName string) bool {
 				return strings.ToLower(filepath.Base(fileName)) == "sha3-256sum" || strings.ToLower(filepath.Ext(fileName)) == ".sha3-256"
 			},
@@ -386,10 +387,10 @@ func init() {
 			Extension: ".sha3-384",
 			Keyed:     false,
 			Compute: func(reader io.Reader, key string, fileAndRangeSpec common.FileAndRangeSpec) (string, error) {
-				return std.ComputeHash(reader, key, func(_ string) (hash.Hash, error) { return sha3.New384(), nil }, fileAndRangeSpec)
+				return std.ComputeHash(reader, key, func(key string) (hash.Hash, error) { return sha3.New384(), nil }, fileAndRangeSpec)
 			},
 			OutputLen: 96,
-			Validate:  func(_ string) error { return nil },
+			Validate:  func(key string) error { return nil },
 			AcceptsFile: func(fileName string) bool {
 				return strings.ToLower(filepath.Base(fileName)) == "sha3-384sum" || strings.ToLower(filepath.Ext(fileName)) == ".sha3-384"
 			},
@@ -401,10 +402,10 @@ func init() {
 			Extension: ".sha3-512",
 			Keyed:     false,
 			Compute: func(reader io.Reader, key string, fileAndRangeSpec common.FileAndRangeSpec) (string, error) {
-				return std.ComputeHash(reader, key, func(_ string) (hash.Hash, error) { return sha3.New512(), nil }, fileAndRangeSpec)
+				return std.ComputeHash(reader, key, func(key string) (hash.Hash, error) { return sha3.New512(), nil }, fileAndRangeSpec)
 			},
 			OutputLen: 128,
-			Validate:  func(_ string) error { return nil },
+			Validate:  func(key string) error { return nil },
 			AcceptsFile: func(fileName string) bool {
 				return strings.ToLower(filepath.Base(fileName)) == "sha3-512sum" || strings.ToLower(filepath.Ext(fileName)) == ".sha3-512"
 			},
@@ -416,10 +417,10 @@ func init() {
 			Extension: ".keccak256",
 			Keyed:     false,
 			Compute: func(reader io.Reader, key string, fileAndRangeSpec common.FileAndRangeSpec) (string, error) {
-				return std.ComputeHash(reader, key, func(_ string) (hash.Hash, error) { return sha3.NewLegacyKeccak256(), nil }, fileAndRangeSpec)
+				return std.ComputeHash(reader, key, func(key string) (hash.Hash, error) { return sha3.NewLegacyKeccak256(), nil }, fileAndRangeSpec)
 			},
 			OutputLen: 64,
-			Validate:  func(_ string) error { return nil },
+			Validate:  func(key string) error { return nil },
 			AcceptsFile: func(fileName string) bool {
 				return strings.ToLower(filepath.Base(fileName)) == "keccak256sum" || strings.ToLower(filepath.Ext(fileName)) == ".keccak256"
 			},
@@ -434,10 +435,10 @@ func init() {
 				if key != "" {
 					return "", fmt.Errorf("shake128: keyed hashing not supported")
 				}
-				return std.ComputeHash(reader, key, func(_ string) (hash.Hash, error) { return sha3.NewShake128(), nil }, fileAndRangeSpec)
+				return std.ComputeHash(reader, key, func(key string) (hash.Hash, error) { return sha3.NewShake128(), nil }, fileAndRangeSpec)
 			},
 			OutputLen: 64,
-			Validate:  func(_ string) error { return nil },
+			Validate:  func(key string) error { return nil },
 			AcceptsFile: func(fileName string) bool {
 				return strings.ToLower(filepath.Base(fileName)) == "shake128sum" || strings.ToLower(filepath.Ext(fileName)) == ".shake128"
 			},
@@ -452,10 +453,10 @@ func init() {
 				if key != "" {
 					return "", fmt.Errorf("shake256: keyed hashing not supported")
 				}
-				return std.ComputeHash(reader, key, func(_ string) (hash.Hash, error) { return sha3.NewShake256(), nil }, fileAndRangeSpec)
+				return std.ComputeHash(reader, key, func(key string) (hash.Hash, error) { return sha3.NewShake256(), nil }, fileAndRangeSpec)
 			},
 			OutputLen: 64,
-			Validate:  func(_ string) error { return nil },
+			Validate:  func(key string) error { return nil },
 			AcceptsFile: func(fileName string) bool {
 				return strings.ToLower(filepath.Base(fileName)) == "shake256sum" || strings.ToLower(filepath.Ext(fileName)) == ".shake256"
 			},
@@ -467,10 +468,10 @@ func init() {
 			Extension: ".ripemd160",
 			Keyed:     false,
 			Compute: func(reader io.Reader, key string, fileAndRangeSpec common.FileAndRangeSpec) (string, error) {
-				return std.ComputeHash(reader, key, func(_ string) (hash.Hash, error) { return ripemd160.New(), nil }, fileAndRangeSpec)
+				return std.ComputeHash(reader, key, func(key string) (hash.Hash, error) { return ripemd160.New(), nil }, fileAndRangeSpec)
 			},
 			OutputLen: 40,
-			Validate:  func(_ string) error { return nil },
+			Validate:  func(key string) error { return nil },
 			AcceptsFile: func(fileName string) bool {
 				return strings.ToLower(filepath.Base(fileName)) == "ripemd160sum" || strings.ToLower(filepath.Ext(fileName)) == ".ripemd160"
 			},
@@ -482,13 +483,13 @@ func init() {
 			Extension: ".blake2b",
 			Keyed:     false,
 			Compute: func(reader io.Reader, key string, fileAndRangeSpec common.FileAndRangeSpec) (string, error) {
-				return std.ComputeHash(reader, key, func(_ string) (hash.Hash, error) {
+				return std.ComputeHash(reader, key, func(key string) (hash.Hash, error) {
 					h, err := blake2b.New256(nil)
 					return h, err
 				}, fileAndRangeSpec)
 			},
 			OutputLen: 64,
-			Validate:  func(_ string) error { return nil },
+			Validate:  func(key string) error { return nil },
 			AcceptsFile: func(fileName string) bool {
 				return strings.ToLower(filepath.Base(fileName)) == "blake2bsum" || strings.ToLower(filepath.Ext(fileName)) == ".blake2b"
 			},
@@ -500,13 +501,13 @@ func init() {
 			Extension: ".blake2s",
 			Keyed:     false,
 			Compute: func(reader io.Reader, key string, fileAndRangeSpec common.FileAndRangeSpec) (string, error) {
-				return std.ComputeHash(reader, key, func(_ string) (hash.Hash, error) {
+				return std.ComputeHash(reader, key, func(key string) (hash.Hash, error) {
 					h, err := blake2s.New256(nil)
 					return h, err
 				}, fileAndRangeSpec)
 			},
 			OutputLen: 64,
-			Validate:  func(_ string) error { return nil },
+			Validate:  func(key string) error { return nil },
 			AcceptsFile: func(fileName string) bool {
 				return strings.ToLower(filepath.Base(fileName)) == "blake2ssum" || strings.ToLower(filepath.Ext(fileName)) == ".blake2s"
 			},
@@ -518,10 +519,10 @@ func init() {
 			Extension: ".blake3",
 			Keyed:     false,
 			Compute: func(reader io.Reader, key string, fileAndRangeSpec common.FileAndRangeSpec) (string, error) {
-				return std.ComputeHash(reader, key, func(_ string) (hash.Hash, error) { return blake3.New(), nil }, fileAndRangeSpec)
+				return std.ComputeHash(reader, key, func(key string) (hash.Hash, error) { return blake3.New(), nil }, fileAndRangeSpec)
 			},
 			OutputLen: 64,
-			Validate:  func(_ string) error { return nil },
+			Validate:  func(key string) error { return nil },
 			AcceptsFile: func(fileName string) bool {
 				return strings.ToLower(filepath.Base(fileName)) == "blake3sum" || strings.ToLower(filepath.Ext(fileName)) == ".blake3"
 			},
