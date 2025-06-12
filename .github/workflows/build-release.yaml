@@ -108,7 +108,9 @@ jobs:
       - name: Create checksums with gsum
         run: |
           cd dist
-          ../gsum-local -increment 10% gsum-* > incremental-checksums.txt
+          # Create incremental-checksums.txt
+          ../gsum-local -increment 10% -output incremental-checksums.txt gsum-*
+          # Create checksums.txt and Individual checksum files
           ../gsum-local gsum-* > checksums.txt
 
       - name: Upload checksums
