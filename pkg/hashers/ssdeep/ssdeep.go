@@ -5,8 +5,9 @@ import (
 	"io"
 
 	"github.com/glaslos/ssdeep"
+
 	"github.com/guilt/gsum/pkg/common"
-	"github.com/guilt/gsum/pkg/std"
+	"github.com/guilt/gsum/pkg/hashers/std"
 )
 
 // ComputeHash generates an ssdeep fuzzy hash for a file range. Keyed hashing not supported.

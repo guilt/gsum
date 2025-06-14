@@ -171,7 +171,7 @@ gsum -help
 To contribute or extend `gsum`:
 
 1. **Add a New Algorithm**:
-   - Create a new package under `pkg/` (e.g., `pkg/newalgo`).
+   - Create a new package under `pkg/hashers/` (e.g., `pkg/hashers/newalgo`).
    - Implement a `ComputeHash` function with the signature:
      ```go
      func ComputeHash(reader io.Reader, key string, rs gfile.FileAndRangeSpec) (string, error)
@@ -182,7 +182,10 @@ To contribute or extend `gsum`:
    ```shell
    GOOS=linux GOARCH=amd64 go build -o gsum-linux-amd64 ./cmd/gsum
    ```
-3. **Run Tests**:
+3. **Run Tests**: 
+   ```shell
+   go test ./...
+   ```
    (Contributions welcome!)
 
 
@@ -213,7 +216,7 @@ Built by [Vibe coding](https://en.wikipedia.org/wiki/Vibe_coding).
 Pull requests, issues, and feature requests are welcome!
 Vibe code it, Vibe debug it, Vibe test it, Vibe PR it, Vibe everything it.
 
-* Authors: [Grok 3.0](https://www.grok.com), [ChatGPT 4.1](https://openai.com/)and Debugger: [Karthik Kumar Viswanathan](https://karthikkumar.org)
+* Authors: [Grok 3.0](https://www.grok.com), [ChatGPT 4.1](https://openai.com/) and Debugger: [Karthik Kumar Viswanathan](https://karthikkumar.org)
 * Web   : http://karthikkumar.org
 * Email : me@karthikkumar.org
 

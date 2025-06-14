@@ -8,7 +8,7 @@ import (
 	"github.com/dchest/siphash"
 
 	"github.com/guilt/gsum/pkg/common"
-	"github.com/guilt/gsum/pkg/std"
+	"github.com/guilt/gsum/pkg/hashers/std"
 )
 
 // ComputeHash computes the SipHash-2-4 of the file range with a 16-byte key.

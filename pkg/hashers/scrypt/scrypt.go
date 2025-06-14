@@ -1,15 +1,16 @@
-package ktwelve
+package scrypt
 
 import (
 	"crypto/sha512"
 	"io"
 
+	"golang.org/x/crypto/scrypt"
+
 	"github.com/guilt/gsum/pkg/common"
-	"github.com/guilt/gsum/pkg/std"
-	k12 "github.com/mimoo/GoKangarooTwelve/K12"
+	"github.com/guilt/gsum/pkg/hashers/std"
 )
 
-// ComputeHash returns a KangarooTwelve hash of the file range, salted with a SHA-512 hash of the key.
+// ComputeHash returns a scrypt hash of the file range, salted with a SHA-512 hash of the key.
 func ComputeHash(reader io.Reader, key string, fileAndRangeSpec common.FileAndRangeSpec) (string, error) {
 	rangeReader, err := std.PrepareRangeReader(reader, fileAndRangeSpec)
 	if err != nil {
@@ -25,13 +26,12 @@ func ComputeHash(reader io.Reader, key string, fileAndRangeSpec common.FileAndRa
 	// Derive salt from the key using SHA-512
 	salt := sha512.Sum512([]byte(key))
 
-	// Concatenate key and data for hashing
-	input := append([]byte(key), data...)
-
-	// Compute KangarooTwelve hash
-	out := make([]byte, 32)
-	k12.K12Sum(salt[:], input, out)
+	// Compute scrypt hash
+	hash, err := scrypt.Key(append([]byte(key), data...), salt[:], 32768, 8, 1, 32)
+	if err != nil {
+		return "", err
+	}
 
 	// Return hash as hex string
-	return std.BytesToHex(out), nil
+	return std.BytesToHex(hash), nil
 }

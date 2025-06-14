@@ -4,11 +4,10 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/guilt/gsum/pkg/common"
-
-	"github.com/guilt/gsum/pkg/std"
-
 	"golang.org/x/crypto/chacha20poly1305"
+
+	"github.com/guilt/gsum/pkg/common"
+	"github.com/guilt/gsum/pkg/hashers/std"
 )
 
 func Compute(reader io.Reader, key string, rs common.FileAndRangeSpec) (string, error) {

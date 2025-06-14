@@ -8,8 +8,9 @@ import (
 	"strings"
 
 	"github.com/emersion/go-bcrypt"
+
 	"github.com/guilt/gsum/pkg/common"
-	"github.com/guilt/gsum/pkg/std"
+	"github.com/guilt/gsum/pkg/hashers/std"
 )
 
 // ComputeHash returns a bcrypt hash of the file range, using a deterministic salt derived from key+data.
@@ -25,23 +26,17 @@ func ComputeHash(reader io.Reader, key string, fileAndRangeSpec common.FileAndRa
 		return "", err
 	}
 
-	// Derive salt from key+data using SHA-512 (first 16 bytes)
-	h := sha512.New()
-	h.Write([]byte(key))
-	h.Write(data)
-	salt := h.Sum(nil)[:16]
+	//Input Data for Keying
+	keyData := append([]byte(key), data...)
+
+	//Derive salt from the key using SHA-512
+	salt := sha512.Sum512(keyData)
 
 	// Prepare input for bcrypt (max 8 bytes, padded to 72)
-	input := key + string(data)
-	if len(input) > 8 {
-		input = input[:8]
-	}
-	inputBytes := make([]byte, 72)
-	copy(inputBytes, input)
-	copy(inputBytes[8:], h.Sum(nil))
+	bcryptInput := append(keyData[:8], salt[:]...)
 
 	// Compute bcrypt hash
-	hash, err := bcrypt.GenerateFromPasswordAndSalt(inputBytes, bcrypt.DefaultCost, salt)
+	hash, err := bcrypt.GenerateFromPasswordAndSalt(bcryptInput, bcrypt.DefaultCost, salt[:16])
 	if err != nil {
 		return "", err
 	}

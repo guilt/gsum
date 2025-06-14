@@ -11,7 +11,6 @@ import (
 	"github.com/guilt/gsum/pkg/file"
 	"github.com/guilt/gsum/pkg/gpg"
 	"github.com/guilt/gsum/pkg/hashers"
-	"github.com/guilt/gsum/pkg/lifecycle"
 	"github.com/guilt/gsum/pkg/log"
 )
 
@@ -46,11 +45,11 @@ func main() {
 }
 
 // selectProgressFunc chooses the appropriate progress reporting function.
-func selectProgressFunc(showProgress bool) lifecycle.ProgressFunc {
+func selectProgressFunc(showProgress bool) common.ProgressFunc {
 	if showProgress {
-		return lifecycle.MakeProgressBars
+		return common.MakeProgressBars
 	}
-	return lifecycle.MakeDefaultLifecycle
+	return common.MakeDefaultLifecycle
 }
 
 // parseArgs parses all command-line flags and arguments into a config struct. Exits on error or missing required args.
@@ -290,7 +289,7 @@ func verifyHash(fileSpec common.FileAndRangeSpec, c file.CheckSumSpec, hasher ha
 
 // generateFileHashes computes and writes hashes for each input file.
 // Handles both normal and incremental (percentage-based) hashing. Writes results to output files.
-func generateFileHashes(hasher hashers.Hasher, inputSpecs []common.FileAndRangeSpec, hashFiles []string, cfg *config, progressFunc lifecycle.ProgressFunc) {
+func generateFileHashes(hasher hashers.Hasher, inputSpecs []common.FileAndRangeSpec, hashFiles []string, cfg *config, progressFunc common.ProgressFunc) {
 	if cfg.increment != "" {
 		generateIncrementalHashes(hasher, inputSpecs, hashFiles, cfg, progressFunc)
 	} else {
@@ -307,7 +306,7 @@ func generateFileHashes(hasher hashers.Hasher, inputSpecs []common.FileAndRangeS
 }
 
 // generateHashes computes and writes hashes for each input file.
-func generateHashes(hasher hashers.Hasher, inputSpecs []common.FileAndRangeSpec, hashFiles []string, cfg *config, progressFunc lifecycle.ProgressFunc) {
+func generateHashes(hasher hashers.Hasher, inputSpecs []common.FileAndRangeSpec, hashFiles []string, cfg *config, progressFunc common.ProgressFunc) {
 	// Map from output file path to all CheckSumSpecs to write there
 	outputMap := make(map[string][]file.CheckSumSpec)
 	for i, fileSpec := range inputSpecs {
@@ -346,7 +345,7 @@ func generateHashes(hasher hashers.Hasher, inputSpecs []common.FileAndRangeSpec,
 }
 
 // generateIncrementalHashes manages incremental hash generation for all input files.
-func generateIncrementalHashes(hasher hashers.Hasher, inputSpecs []common.FileAndRangeSpec, hashFiles []string, cfg *config, progressFunc lifecycle.ProgressFunc) {
+func generateIncrementalHashes(hasher hashers.Hasher, inputSpecs []common.FileAndRangeSpec, hashFiles []string, cfg *config, progressFunc common.ProgressFunc) {
 	percent, err := common.ParsePercent(cfg.increment)
 	if err != nil {
 		logger.Fatalf("Invalid increment: %s", cfg.increment)

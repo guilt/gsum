@@ -2,98 +2,11 @@ package common
 
 import (
 	"fmt"
-	"io"
 	"math"
 	"os"
-	"strconv"
 	"strings"
 )
 
-// Algorithm represents a hash algorithm.
-type Algorithm int
-
-// Constants for hash algorithms.
-const (
-	CRC32 Algorithm = iota
-	BSDCKSUM
-	MD4
-	MD5
-	SHA1
-	SHA256
-	SHA512
-	SHA3_256
-	SHAKE128
-	SHAKE256
-	BLAKE2B
-	BLAKE3
-	HMACSHA1
-	HMACSHA256
-	HMACSHA512
-	CHACHA20POLY1305
-	XXHASH
-	SIPHASH
-	CITYHASH
-	KANGAROOTWELVE
-	STREEBOG256
-	STREEBOG512
-	SHA224
-	SHA384
-	SHA512_224
-	SHA512_256
-	SHA3_224
-	SHA3_384
-	SHA3_512
-	RIPEMD160
-	HMACMD5
-	HMACRIPEMD160
-	HMACBLAKE2B
-	BLAKE2S
-	ADLER32
-	BCRYPT_SHA512
-	ARGON2_SHA512
-	SM3
-	TTH
-	KECCAK256
-	PBKDF2_SHA512
-	SCRYPT_SHA512
-	SSDEEP
-	WHIRLPOOL
-)
-
-// FormatPercent formats a percent value as a string without
-// unnecessary trailing zeros (e.g. 95, 95.5)
-func FormatPercent(p float64) string {
-	str := fmt.Sprintf("%.15g", p)
-	str = strings.TrimSuffix(str, ".0")
-	return str
-}
-
-// ParsePercent parses a percent string (e.g., "50%") and returns its value as a float64.
-func ParsePercent(s string) (float64, error) {
-	if s == "" {
-		return 0, fmt.Errorf("percentage cannot be empty")
-	}
-	s = strings.TrimSuffix(s, "%")
-	percent, err := strconv.ParseFloat(s, 64)
-	if err != nil {
-		return 0, fmt.Errorf("invalid percentage: %s", s)
-	}
-	if percent < 0 || percent > 100 {
-		return 0, fmt.Errorf("percentage must be in (0,100]: %s", s)
-	}
-	return percent, nil
-}
-
-// ParseInt64 parses a string as int64 and returns an error if invalid or negative.
-func ParseInt64(s string) (int64, error) {
-	val, err := strconv.ParseInt(s, 10, 64)
-	if err != nil || val < 0 {
-		return 0, fmt.Errorf("invalid int64: %s", s)
-	}
-	return val, nil
-}
-
-// FileAndRangeSpec represents a file path with an optional byte or percent range.
 // FileAndRangeSpec represents a file path with an optional byte or percent range.
 // When IsPercent is true, Start and End are stored as basis points (0-10000), where 10000 = 100%.
 type FileAndRangeSpec struct {
@@ -116,7 +29,7 @@ func LessFileAndRange(a, b FileAndRangeSpec) bool {
 }
 
 // ToPercentRange converts a byte-based FileAndRangeSpec to a percent-based one (basis points), given the file size.
-// If already percent, returns a copy. Debug output is printed.
+// If already percent, returns a copy.
 func (rs *FileAndRangeSpec) ToPercentRange(fileSize int64) FileAndRangeSpec {
 	if rs.IsPercent {
 		return *rs
@@ -141,7 +54,7 @@ func (rs *FileAndRangeSpec) ToPercentRange(fileSize int64) FileAndRangeSpec {
 }
 
 // getStartEndBytes returns the absolute byte offsets for the FileAndRangeSpec, regardless of IsPercent.
-// Handles -1 for start/end, and prints debug output.
+// Handles -1 for start/end.
 func (rs *FileAndRangeSpec) getStartEndBytes(fileSize int64) (int64, int64) {
 	var start, end int64
 	if rs.IsPercent {
@@ -186,32 +99,13 @@ func (rs *FileAndRangeSpec) ToAbsoluteRange(fileSize int64) FileAndRangeSpec {
 	return converted
 }
 
-// GetRangeSize returns the size of the range for this FileAndRangeSpec.
-// If End == -1, it uses fileSize as the end.
-func (rs *FileAndRangeSpec) GetRangeSize(fileSize int64) int64 {
-	start, end := rs.getStartEndBytes(fileSize)
-	return end - start
-}
-
 // String returns a string representation of the FileAndRangeSpec, including any range or percent info.
-// When IsPercent is true, Start and End are stored as basis points (0-10000).
 func (rs *FileAndRangeSpec) String() string {
-	if rs.Start == -1 && rs.End == -1 || rs.Start == 0 && rs.End == -1 {
-		return rs.FilePath
-	}
 	if rs.IsPercent {
-		startPercent := float64(rs.Start) / 100.0
-		endPercent := float64(rs.End) / 100.0
-		if rs.Start == -1 {
-			return fmt.Sprintf("%s#-%s%%", rs.FilePath, FormatPercent(endPercent))
-		}
-		if rs.End == -1 {
-			return fmt.Sprintf("%s#%s%%-", rs.FilePath, FormatPercent(startPercent))
-		}
-		return fmt.Sprintf("%s#%s%%-%s%%", rs.FilePath, FormatPercent(startPercent), FormatPercent(endPercent))
+		return fmt.Sprintf("%s#%d%%-%d%%", rs.FilePath, rs.Start/100, rs.End/100)
 	}
-	if rs.Start == -1 {
-		return fmt.Sprintf("%s#-%d", rs.FilePath, rs.End)
+	if rs.Start == 0 && (rs.End == -1 || rs.End == 0) {
+		return rs.FilePath
 	}
 	if rs.End == -1 {
 		return fmt.Sprintf("%s#%d-", rs.FilePath, rs.Start)
@@ -220,7 +114,6 @@ func (rs *FileAndRangeSpec) String() string {
 }
 
 // Parse populates the FileAndRangeSpec fields from a string of the form "file#start-end" or "file#start%-end%".
-// When IsPercent is true, Start and End are stored as basis points (0-10000).
 func (rs *FileAndRangeSpec) Parse(s string) error {
 	parts := strings.SplitN(s, "#", 2)
 	rs.FilePath = parts[0]
@@ -298,7 +191,6 @@ func (rs *FileAndRangeSpec) Parse(s string) error {
 }
 
 // ToBytes converts the FileAndRangeSpec's range (including percent) to absolute byte offsets for a file of the given size.
-// When IsPercent is true, Start and End are stored as basis points (0-10000).
 func (rs *FileAndRangeSpec) ToBytes() (start, end int64, err error) {
 	fileInfo, err := os.Stat(rs.FilePath)
 	if err != nil {
@@ -312,12 +204,14 @@ func (rs *FileAndRangeSpec) ToBytes() (start, end int64, err error) {
 	return start, end, nil
 }
 
+// GetRangeSize returns the size of the range for this FileAndRangeSpec.
+// If End == -1, it uses fileSize as the end.
+func (rs *FileAndRangeSpec) GetRangeSize(fileSize int64) int64 {
+	start, end := rs.getStartEndBytes(fileSize)
+	return end - start
+}
+
 // IncrementalRanges generates a slice of FileAndRangeSpec representing incremental percent-based ranges for a file.
-// filePath: the path to the file.
-// fileSize: the size of the file in bytes.
-// percent: the percentage increment (e.g., 10 for 10%).
-// Returns a slice of FileAndRangeSpec, one for each increment.
-// When IsPercent is true, Start and End are stored as basis points (0-10000).
 func IncrementalRanges(filePath string, fileSize int64, percent float64) []FileAndRangeSpec {
 	if percent <= 0 || percent > 100 {
 		return nil
@@ -342,26 +236,4 @@ func IncrementalRanges(filePath string, fileSize int64, percent float64) []FileA
 		result = append(result, rs)
 	}
 	return result
-}
-
-// FileLifecycle represents a lifecycle of a file being processed.
-type FileLifecycle struct {
-	OnStart func(offset1, offset2 int64)
-	OnChunk func(bytes int64)
-	OnEnd   func()
-}
-
-// LifecycleReader is a reader that tracks the lifecycle of a file being processed.
-type LifecycleReader struct {
-	Reader    io.Reader
-	Lifecycle FileLifecycle
-}
-
-// Read implements io.Reader.
-func (lr *LifecycleReader) Read(p []byte) (n int, err error) {
-	n, err = lr.Reader.Read(p)
-	if n > 0 {
-		lr.Lifecycle.OnChunk(int64(n))
-	}
-	return n, err
 }

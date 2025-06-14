@@ -28,19 +28,19 @@ import (
 	"github.com/zeebo/blake3"
 	"github.com/zentures/cityhash"
 
-	"github.com/guilt/gsum/pkg/argon2"
-	"github.com/guilt/gsum/pkg/bcrypt"
-	"github.com/guilt/gsum/pkg/bsdcksum"
-	"github.com/guilt/gsum/pkg/chacha"
 	"github.com/guilt/gsum/pkg/common"
-	"github.com/guilt/gsum/pkg/ktwelve"
-	"github.com/guilt/gsum/pkg/pbkdf2"
-	"github.com/guilt/gsum/pkg/scrypt"
-	"github.com/guilt/gsum/pkg/siphash"
-	"github.com/guilt/gsum/pkg/ssdeep"
-	"github.com/guilt/gsum/pkg/std"
-	"github.com/guilt/gsum/pkg/streebog"
-	"github.com/guilt/gsum/pkg/tth"
+	"github.com/guilt/gsum/pkg/hashers/argon2"
+	"github.com/guilt/gsum/pkg/hashers/bcrypt"
+	"github.com/guilt/gsum/pkg/hashers/bsdcksum"
+	"github.com/guilt/gsum/pkg/hashers/chacha"
+	"github.com/guilt/gsum/pkg/hashers/ktwelve"
+	"github.com/guilt/gsum/pkg/hashers/pbkdf2"
+	"github.com/guilt/gsum/pkg/hashers/scrypt"
+	"github.com/guilt/gsum/pkg/hashers/siphash"
+	"github.com/guilt/gsum/pkg/hashers/ssdeep"
+	"github.com/guilt/gsum/pkg/hashers/std"
+	"github.com/guilt/gsum/pkg/hashers/streebog"
+	"github.com/guilt/gsum/pkg/hashers/tth"
 )
 
 // Hasher represents a hash function.
@@ -212,7 +212,7 @@ func init() {
 			AcceptsFile: func(fileName string) bool {
 				return strings.ToLower(filepath.Base(fileName)) == "bcrypt-sha512sum" || strings.ToLower(filepath.Ext(fileName)) == ".bcrypt-sha512"
 			},
-			ParseChecksumLine: bcrypt.ParseChecksumLine,
+			ParseChecksumLine: std.ParseChecksumLine,
 		},
 		common.MD4: {
 			Algorithm: common.MD4,
