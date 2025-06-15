@@ -184,9 +184,8 @@ To contribute or extend `gsum`:
    ```
 3. **Run Tests**: 
    ```shell
-   go test ./...
+   ./gsum-test.sh
    ```
-   (Contributions welcome!)
 
 
 ## Dependencies

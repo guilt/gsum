@@ -1,0 +1,6 @@
+Hash-default-0%-5%: 30e14955ebf1352266dc2ff8067e68104607e750abb9d3b36582b8af909fcb58
+Hash-bcrypt-sha512-0%-5%: $2a$10$Io0q6yskeDLtSVUyJ/dHn.D7OWLcrRcxZDFdAmpGK8LvtK6D4YVbO
+Hash-crc32-0%-5%: a738ea1c
+Hash-default-5%-10%: f5fb04aa5b882706b9309e885f19477261336ef76a150c3b4d3489dfac3953ec
+Hash-bcrypt-sha512-5%-10%: $2a$10$IWIhdspqNqAa8z71YsE7K.506AicST4VIwvP2NYCgvU.OE1RQ296C
+Hash-crc32-5%-10%: 956bac74

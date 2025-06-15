@@ -32,12 +32,9 @@ Thumbs.db
 # Log files
 *.log
 
-# Example file for testing
-example*.txt
-small*.txt
-medium*.txt
-large*.txt
-x*large*.txt
+# Example files for testing
+*.txt
+*.txt.*
 
 # Temporary files
 tmp/

@@ -64,7 +64,7 @@ jobs:
         if: matrix.platform == 'linux-amd64'
         run: |
           CGO_ENABLED=0 go build -ldflags "-s -w" -o gsum-local ./cmd/gsum/
-
+      
       - name: Build and compress binary for distribution
         run: |
           mkdir -p dist
@@ -72,6 +72,10 @@ jobs:
           if [[ "${{ matrix.platform }}" != *"riscv64"* && "${{ matrix.platform }}" != *"ppc64le"* && "${{ matrix.platform }}" != *"s390x"* ]]; then
             upx --best dist/gsum-${{ matrix.platform }}${{ steps.parse.outputs.exe }} || true
           fi
+
+      - name: Run tests
+        if: matrix.platform == 'linux-amd64'
+        run: ./gsum-test.sh testcases dist/gsum-${{ matrix.platform }}${{ steps.parse.outputs.exe }} || true
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
