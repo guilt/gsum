@@ -75,7 +75,7 @@ jobs:
 
       - name: Run tests
         if: matrix.platform == 'linux-amd64'
-        run: ./gsum-test.sh testcases dist/gsum-${{ matrix.platform }}${{ steps.parse.outputs.exe }} || true
+        run: ./gsum-test.sh testcases dist/gsum-${{ matrix.platform }}${{ steps.parse.outputs.exe }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4

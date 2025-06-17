@@ -1,14 +1,10 @@
 #!/bin/sh
 
-# .sh: Runs gsum CLI test cases, generating files, hashing with range/increment,
-# validating output, and verifying hash files. POSIX-compliant for CI/CD.
+# gsum-test.sh: Runs gsum CLI test cases, generating files, hashing with range/increment,
+# validating output, and verifying hash files. POSIX-compliant with bash extensions for CI/CD.
 
 # Set strict mode
 set -eu
-
-# Enable pipefail only if supported
-# shellcheck disable=SC3040
-# set -o pipefail 2>/dev/null
 
 # Global counters for test cases
 totalTestCases=0
@@ -61,8 +57,29 @@ logInfo() {
 # Log debug message if DEBUG set
 logDebug() {
     if [ -n "${DEBUG:-}" ]; then
-        printf "${blue}[DEBUG]${reset} %b\n" "${1:?Missing message}" >&2
+        printf "${blue}[DEBUG] %b\n${reset}" "${1:?Missing message}" >&2
     fi
+}
+
+# Check environment tools (non-fatal)
+checkEnvTools() {
+    logDebug "Checking environment tools:"
+    for tool in dd tr awk sed truncate printf hexdump; do
+        if command -v "$tool" >/dev/null 2>&1; then
+            version=$("$tool" --version 2>/dev/null | head -n1 || echo "unknown")
+            logDebug "$tool version: $version"
+        else
+            logDebug "$tool not found in PATH, may cause issues"
+        fi
+    done
+    return 0
+}
+
+# Get script directory
+getScriptDir() {
+    scriptDir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+    logDebug "Script directory: $scriptDir"
+    echo "$scriptDir"
 }
 
 # Get temp directory, cache in tempDir
@@ -121,24 +138,21 @@ convertFileSizeBytes() {
     echo "$bytes"
 }
 
-# Parse range string (e.g., 5%-93% → 5 93)
-# calculateOffset: converts a percent value (e.g., 5%) or byte value (e.g., 100) to a byte offset
-# Usage: calculateOffset <value> <fileSize>
+# Calculate offset from percent or bytes
 calculateOffset() {
     val="$1"
     fileSize="$2"
     if echo "$val" | grep -q '%$'; then
         percent=$(echo "$val" | sed 's/%$//')
-        # Use bc for floating point math
-        offset=$(echo "$fileSize * $percent / 100" | bc)
+        offset=$((fileSize * percent / 100))
+        logDebug "Calculated offset: $percent% of $fileSize = $offset bytes"
         echo "$offset"
     else
         echo "$val"
     fi
 }
 
-# parseRange: outputs start and end byte offsets for any range format
-# Usage: parseRange <range> <fileSize>
+# Parse range string (e.g., 5%-93% → 5 93)
 parseRange() {
     range="${1:?Missing range}"
     fileSize="${2:?Missing fileSize}"
@@ -156,9 +170,11 @@ validateRange() {
     fileSizeBytes="${3:?Missing fileSizeBytes}"
     isPercent="${4:?Missing isPercent}"
     if [ "$isPercent" = "1" ]; then
-        [ "$start" -lt 0 ] || [ "$end" -gt 100 ] || [ "$start" -ge "$end" ] && (logFatal "Invalid percentage range: $start%-$end%"; return 1)
+        [ "$start" -lt 0 ] || [ "$end" -gt 100 ] || [ "$start" -ge "$end" ] && \
+            (logFatal "Invalid percentage range: $start%-$end%"; return 1)
     else
-        [ "$start" -lt 0 ] || [ "$end" -gt "$fileSizeBytes" ] || [ "$start" -ge "$end" ] && (logFatal "Invalid absolute range: $start-$end"; return 1)
+        [ "$start" -lt 0 ] || [ "$end" -gt "$fileSizeBytes" ] || [ "$start" -ge "$end" ] && \
+            (logFatal "Invalid absolute range: $start-$end"; return 1)
     fi
 }
 
@@ -175,6 +191,7 @@ calculateRangeBytes() {
         startBytes="$start"
         endBytes="$end"
     fi
+    logDebug "Range bytes: start=$startBytes, end=$endBytes"
     echo "$startBytes $endBytes"
 }
 
@@ -186,10 +203,10 @@ convertFileRange() {
     if echo "$range" | grep -E '^[0-9]+%-[0-9]+%$' >/dev/null; then
         isPercent=1
     fi
-    startEnd=$(parseRange "$range")
+    startEnd=$(parseRange "$range" "$fileSizeBytes")
     start=$(echo "$startEnd" | cut -d' ' -f1)
     end=$(echo "$startEnd" | cut -d' ' -f2)
-    validateRange "$start" "$end" "$fileSizeBytes" "$isPercent"
+    validateRange "$start" "$end" "$fileSizeBytes" "$isPercent" || return 1
     startEndBytes=$(calculateRangeBytes "$start" "$end" "$fileSizeBytes" "$isPercent")
     logDebug "Converted range $range to $startEndBytes bytes"
     echo "$startEndBytes"
@@ -208,7 +225,8 @@ parseIncrement() {
 # Validate increment percentage
 validateIncrement() {
     percent="${1:?Missing percent}"
-    [ "$percent" -le 0 ] || [ "$percent" -gt 100 ] && (logFatal "Invalid increment percentage: $percent%"; return 1)
+    [ "$percent" -le 0 ] || [ "$percent" -gt 100 ] && \
+        (logFatal "Invalid increment percentage: $percent%"; return 1)
 }
 
 # Calculate increment bytes
@@ -216,6 +234,7 @@ calculateIncrementBytes() {
     percent="${1:?Missing percent}"
     fileSizeBytes="${2:?Missing fileSizeBytes}"
     stepBytes=$((fileSizeBytes * percent / 100))
+    logDebug "Increment bytes: $percent% of $fileSizeBytes = $stepBytes"
     echo "$stepBytes"
 }
 
@@ -223,8 +242,8 @@ calculateIncrementBytes() {
 convertIncrement() {
     increment="${1:?Missing increment}"
     fileSizeBytes="${2:?Missing fileSizeBytes}"
-    percent=$(parseIncrement "$increment")
-    validateIncrement "$percent"
+    percent=$(parseIncrement "$increment") || return 1
+    validateIncrement "$percent" || return 1
     stepBytes=$(calculateIncrementBytes "$percent" "$fileSizeBytes")
     logDebug "Converted increment $increment to $stepBytes bytes"
     echo "$stepBytes"
@@ -234,7 +253,6 @@ convertIncrement() {
 parseAlgoMatrix() {
     algoMatrix="${1:?Missing algoMatrix}"
     [ -z "$algoMatrix" ] && (logFatal "Empty AlgoMatrix"; return 1)
-    # POSIX: Split on comma, trim whitespace, output comma-separated
     result=""
     IFS=','
     for entry in $algoMatrix; do
@@ -248,7 +266,8 @@ parseAlgoMatrix() {
 # Parse File directive
 parseFiles() {
     testFile="${1:?Missing testFile}"
-    fileLine=$(grep "^File" "$testFile" 2>/dev/null) || (logFatal "No File directive in ${cyan}$testFile${reset}"; return 1)
+    fileLine=$(grep "^File" "$testFile" 2>/dev/null) || \
+        (logFatal "No File directive in ${cyan}$testFile${reset}"; return 1)
     # shellcheck disable=SC2086
     set -- $fileLine
     shift
@@ -270,16 +289,19 @@ createFiles() {
     fileSize="${2:?Missing fileSize}"
     fileType="${3:?Missing fileType}"
     args="${4:-}"
-    fileSizeBytes=$(convertFileSizeBytes "$fileSize") || (logFatal "Invalid file size $fileSize"; return 1)
+    fileSizeBytes=$(convertFileSizeBytes "$fileSize") || \
+        (logFatal "Invalid file size $fileSize"; return 1)
 
     case "$fileType" in
-        zero) fillFile "$fileName" "$fileSizeBytes" "00" 0 4096 ;;
-        fill) fillFile "$fileName" "$fileSizeBytes" "$args" 0 4096 ;;
+        zero) fillFile "$fileName" "$fileSizeBytes" "00" 0 ;;
+        fill) fillFile "$fileName" "$fileSizeBytes" "$args" 0 ;;
         tile)
             chunkSize=$(echo "$args" | cut -d' ' -f1)
             bytes=$(echo "$args" | cut -d' ' -f2)
-            chunkSizeBytes=$(convertFileSizeBytes "$chunkSize") || (logFatal "Invalid chunk size $chunkSize"; return 1)
-            tileFile "$fileName" "$fileSizeBytes" "$chunkSizeBytes" "$bytes" || (logFatal "Unable to generate Tile file $fileName"; return 1)
+            chunkSizeBytes=$(convertFileSizeBytes "$chunkSize") || \
+                (logFatal "Invalid chunk size $chunkSize"; return 1)
+            tileFile "$fileName" "$fileSizeBytes" "$chunkSizeBytes" "$bytes" || \
+                (logFatal "Unable to generate Tile file $fileName"; return 1)
             fileName=$tileFileName
             ;;
         *) (logFatal "Unknown file type $fileType"; return 1) ;;
@@ -293,12 +315,13 @@ parseAlgos() {
     testFile="${1:?Missing testFile}"
     logDebug "Parsing AlgoMatrix from ${cyan}$testFile${reset}"
     [ -f "$testFile" ] || (logFatal "Test file ${cyan}$testFile${reset} not found"; return 1)
-    algoMatrix=$(grep "^AlgoMatrix" "$testFile" 2>/dev/null | cut -d':' -f2- | cut -c2-) || algoMatrix="default"
+    algoMatrix=$(grep "^AlgoMatrix" "$testFile" 2>/dev/null | cut -d':' -f2- | cut -c2-) || \
+        algoMatrix="default"
     logDebug "AlgoMatrix: $algoMatrix"
-    rangeLine=$(grep "^Range" "$testFile" 2>/dev/null | cut -d':' -f2- | cut -c2- || true)
-    incrementLine=$(grep "^Increment" "$testFile" 2>/dev/null | cut -d':' -f2- | cut -c2- || true)
+    rangeSpec=$(grep "^Range" "$testFile" 2>/dev/null | cut -d':' -f2- | cut -c2- || true)
+    incrementSpec=$(grep "^Increment" "$testFile" 2>/dev/null | cut -d':' -f2- | cut -c2- || true)
     algoList=$(parseAlgoMatrix "$algoMatrix")
-    echo "$algoList:$rangeLine:$incrementLine"
+    echo "$algoList:$rangeSpec:$incrementSpec"
 }
 
 # Fill file with a byte
@@ -306,34 +329,63 @@ fillFile() {
     fileName="${1:?Missing fileName}"
     sizeBytes="${2:?Missing sizeBytes}"
     byteValue="${3:?Missing byteValue}"
-    seekOffsetChunk="${4:?Missing seekOffsetChunk}"
-    blockSize="${5:-4096}"
-    logDebug "Filling ${cyan}$fileName${reset} with $sizeBytes bytes of 0x$byteValue at offset $seekOffsetChunk with blockSize $blockSize"
+    seekOffsetBytes="${4:?Missing seekOffsetBytes}"
+    logDebug "Filling ${cyan}$fileName${reset} with ${cyan}$sizeBytes${reset} bytes of ${cyan}0x$byteValue${reset} at offset ${cyan}$seekOffsetBytes${reset}"
 
     # Strip 0x prefix if present
     cleanByteValue=$(echo "$byteValue" | sed 's/^0x//')
 
     # Convert byteValue to decimal
     decimalByte=$(printf "%d" "0x$cleanByteValue")
-    octalByte=$(printf "%o" "$decimalByte")
 
-    # Use dd | tr | dd if available
-    if [ -r "/dev/zero" ] && command -v tr >/dev/null 2>&1; then
-        count=$(((sizeBytes + blockSize - 1) / blockSize))
+    # Truncate file to 0 if starting at offset 0
+    if [ "$seekOffsetBytes" -eq 0 ]; then
+        truncate -s 0 "$fileName" 2>/dev/null || touch "$fileName"
+    fi
+
+    # Use printf for small files (<= 4096 bytes) for precision
+    if [ "$sizeBytes" -le 4096 ]; then
         if [ "$decimalByte" -eq 0 ]; then
-            # Special case: fill with binary zero
-            dd if=/dev/zero bs="$blockSize" count="$count" 2>/dev/null | dd of="$fileName" bs="$blockSize" seek="$seekOffsetChunk" status=none 2>/dev/null || {
+            dd if=/dev/zero bs=1 count="$sizeBytes" of="$fileName" seek="$seekOffsetBytes" status=none 2>/dev/null || {
                 logFatal "Failed to fill file ${cyan}$fileName${reset}"; return 1
             }
         else
-            # Fill with other values using tr
-            dd if=/dev/zero bs="$blockSize" count="$count" 2>/dev/null | tr '\0' "\\$octalByte" | dd of="$fileName" bs="$blockSize" seek="$seekOffsetChunk" status=none 2>/dev/null || {
+            octalByte=$(printf "%03o" "$decimalByte")
+            dd if=/dev/zero bs=1 count="$sizeBytes" 2>/dev/null | tr '\0' "\\$octalByte" > "$fileName" || {
                 logFatal "Failed to fill file ${cyan}$fileName${reset}"; return 1
             }
         fi
     else
-        logFatal "dd and tr not available, cannot process file ${cyan}$fileName${reset}";
-        return 1
+        # Use dd | tr for larger files
+        LC_ALL=C
+        blockSize=4096
+        count=$(((sizeBytes + blockSize - 1) / blockSize))
+        octalByte=$(printf "%03o" "$decimalByte")
+        if [ "$decimalByte" -eq 0 ]; then
+            dd if=/dev/zero bs="$blockSize" count="$count" 2>/dev/null | \
+            dd of="$fileName" bs="$blockSize" seek=$((seekOffsetBytes / blockSize)) status=none 2>/dev/null || {
+                logFatal "Failed to fill file ${cyan}$fileName${reset}"; return 1
+            }
+        else
+            dd if=/dev/zero bs="$blockSize" count="$count" 2>/dev/null | \
+            tr '\0' "\\$octalByte" | \
+            dd of="$fileName" bs="$blockSize" seek=$((seekOffsetBytes / blockSize)) status=none 2>/dev/null || {
+                logFatal "Failed to fill file ${cyan}$fileName${reset}"; return 1
+            }
+        fi
+        truncate -s $((seekOffsetBytes + sizeBytes)) "$fileName" 2>/dev/null || {
+            logFatal "Failed to truncate ${cyan}$fileName${reset} to $((seekOffsetBytes + sizeBytes)) bytes"; return 1
+        }
+    fi
+
+    # Verify file contents at the correct offset
+    if [ -f "$fileName" ] && [ "$sizeBytes" -gt 0 ]; then
+        readSize=16
+        if [ "$sizeBytes" -lt 16 ]; then
+            readSize="$sizeBytes"
+        fi
+        headBytes=$(hexdump -C -n "$readSize" -s "$seekOffsetBytes" "$fileName" 2>/dev/null | head -n1 | cut -d'|' -f1 | tr -s ' ')
+        logDebug "Bytes at offset $seekOffsetBytes in ${cyan}$fileName${reset}: $headBytes"
     fi
 }
 
@@ -347,36 +399,40 @@ tileFile() {
 
     tmpFile="${tileFileName}.tile.$$"
     tileBytes=$(echo "$bytes" | tr ',' ' ')
-    offset=0
-
     numPatterns=0
     for byte in $tileBytes; do
         numPatterns=$((numPatterns+1))
     done
-    patternSizeBytes=$((numPatterns*chunkSizeBytes))
+    patternSizeBytes=$((numPatterns * chunkSizeBytes))
     totalCycles=$(( (fileSizeBytes + patternSizeBytes - 1) / patternSizeBytes ))
 
-    offsetChunk=0
+    # Initialize temp file
+    truncate -s "$fileSizeBytes" "$tmpFile" 2>/dev/null || {
+        logFatal "Failed to initialize ${cyan}$tmpFile${reset}"; return 1
+    }
+
+    byteOffset=0
     for _ in $(seq 1 $totalCycles); do
         for byte in $tileBytes; do
-            fillFile "$tmpFile" "$chunkSizeBytes" "$byte" "$offsetChunk" "$chunkSizeBytes" || {
-                logFatal "Failed to create pattern chunk for byte $byte at offset $offsetChunk";
-                rm -f "$tmpFile"; return 1;
-            }
-            offsetChunk=$((offsetChunk+1))
+            if [ $((byteOffset + chunkSizeBytes)) -le "$fileSizeBytes" ]; then
+                fillFile "$tmpFile" "$chunkSizeBytes" "$byte" "$byteOffset" || {
+                    logFatal "Failed to create pattern chunk for byte $byte at offset $byteOffset"
+                    rm -f "$tmpFile"; return 1
+                }
+            fi
+            byteOffset=$((byteOffset + chunkSizeBytes))
+            logDebug "Wrote chunk of $chunkSizeBytes bytes with 0x$byte at offset $byteOffset"
         done
     done
 
     logDebug "Writing tiled file ${cyan}$tileFileName${reset} with $fileSizeBytes bytes"
-    dd if="$tmpFile" of="$tileFileName" bs="$fileSizeBytes" count="1" status=none 2>/dev/null || {
-        logFatal "Failed to write tiled file ${cyan}$tileFileName${reset}";
-        return 1
+    mv "$tmpFile" "$tileFileName" || {
+        logFatal "Failed to write tiled file ${cyan}$tileFileName${reset}"
+        rm -f "$tmpFile"; return 1
     }
-    rm -f "$tmpFile"
     logDebug "Tiled file ${cyan}$tileFileName${reset} completed"
     return 0
 }
-
 
 # Perform gsum command with proper algo handling
 performGSum() {
@@ -386,10 +442,10 @@ performGSum() {
     tempOutput="${4:?Missing tempOutput}"
     tempError="${5:?Missing tempError}"
     rangeSpec="${6:-}"
-    incrementLine="${7:-}"
+    incrementSpec="${7:-}"
     verifyFlag="${8:-}"
 
-    # If space is in algoFull, use cut to extract algo and key
+    # Extract algo and key
     if echo "$algoFull" | grep ' ' >/dev/null; then
         algo=$(echo "$algoFull" | cut -d' ' -f1)
         key=$(echo "$algoFull" | cut -d' ' -f2-)
@@ -406,8 +462,8 @@ performGSum() {
     if [ -n "$key" ]; then
         gsumCmd="$gsumCmd -key \"$key\""
     fi
-    if [ -n "$incrementLine" ]; then
-        gsumCmd="$gsumCmd -increment $incrementLine"
+    if [ -n "$incrementSpec" ]; then
+        gsumCmd="$gsumCmd -increment $incrementSpec"
     fi
     if [ -n "$verifyFlag" ]; then
         gsumCmd="$gsumCmd $verifyFlag"
@@ -426,14 +482,12 @@ performGSum() {
         return 1
     fi
 
+    logDebug "Raw gsum output for $algo:\n$(cat "$tempOutput" 2>/dev/null)"
     logDebug "GSum completed successfully for $algo"
     return 0
 }
 
-
 # Test a single algorithm on a test file
-# Usage: testAlgo <algo> <testFileName> <fileSizeBytes> <rangeSpec> <incrementLine> <testDirBase> <expectedFile>
-# shellcheck disable=SC2094
 testAlgo() {
     algo="${1:?Missing algo}"
     testFileName="${2:?Missing testFileName}"
@@ -441,131 +495,137 @@ testAlgo() {
     testDirBase="${4:?Missing testDirBase}"
     expectedFile="${5:?Missing expectedFile}"
     rangeSpec="${6:-}"
-    incrementLine="${7:-}"
+    incrementSpec="${7:-}"
 
     tempOutput="${testDirBase}/tmp.$$.$algo"
     tempError="${testDirBase}/tmp.$$.$algo.err"
     logDebug "Testing algorithm: $algo"
 
-    # Check that the test file exists and is not empty before hashing
-    if [ ! -f "$testFileName" ]; then
-        logFatal "Test file $testFileName does not exist"; return 1
-    fi
+    # Check that the test file exists
+    [ -f "$testFileName" ] || {
+        logFatal "Test file $testFileName does not exist"
+        return 1
+    }
 
-    # Perform gsum and process output
-    hashes=""
-    if ! performGSum "$algo" "$testDirBase" "$testFileName" "$tempOutput" "$tempError" "$rangeSpec" "$incrementLine"; then
+    # Perform gsum
+    performGSum "$algo" "$testDirBase" "$testFileName" "$tempOutput" "$tempError" "$rangeSpec" "$incrementSpec" || {
         rm -f "$tempOutput" "$tempError" 2>/dev/null
         return 1
-    fi
-    logDebug "Processing output for $algo"
-    if [ ! -s "$tempOutput" ]; then
+    }
+
+    # Check for empty output
+    [ -s "$tempOutput" ] || {
         logInfo "Empty output for algorithm $algo"
         rm -f "$tempOutput" "$tempError" 2>/dev/null
         return 1
-    fi
+    }
 
+    # Parse output with awk
+    hashes=""
+    IFS=$'\n'
     while IFS= read -r line || [ -n "$line" ]; do
+        [ -z "$line" ] && continue
+        # Extract hash (field 1) and fileNameAndRange (field 3 onwards)
+        parsed=$(echo "$line" | awk '{print $1 " " substr($0, index($0,$3))}')
+        hash=$(echo "$parsed" | awk '{print $1}')
+        fileNameAndRange=$(echo "$parsed" | awk '{$1=""; sub(/^ /, ""); print}')
 
-        hash=$(echo "$line" | awk '{print $1}')
-        fileNameAndRange=$(echo "$line" | awk '{print $3}')
+        logDebug "Parsed line: hash=$hash, fileNameAndRange=$fileNameAndRange"
 
-        range=""
-        if [ -n "$fileNameAndRange" ]; then
-            # Extract after '#' if present, otherwise use as-is
-            if echo "$fileNameAndRange" | grep -q '#'; then
-                range=$(echo "$fileNameAndRange" | sed 's/.*#//')
-            else
-                range=""
-            fi
-        fi
-
-        if [ -z "$hash" ]; then
+        [ -z "$hash" ] && {
             logInfo "Invalid output line: $line"
-            rm -f "$tempOutput" "$tempError" 2>/dev/null
-            return 1
+            continue
+        }
+
+        # Extract range if present
+        range=""
+        if echo "$fileNameAndRange" | grep -q '#'; then
+            range=$(echo "$fileNameAndRange" | sed 's/.*#//')
         fi
-        
-        # If range is present, use range in key; otherwise, just Hash-$algo:
+
+        # Store hash with range or algo key
         if [ -n "$range" ]; then
-            hashes="$hashes\nHash-$algo-$range: $hash"
+            if [ -n "$hashes" ]; then
+                hashes="${hashes}|"
+            fi
+            hashes="${hashes}Hash-$algo-$range: $hash"
             logDebug "Collected hash: Hash-$algo-$range: $hash"
         else
-            hashes="$hashes\nHash-$algo: $hash"
+            if [ -n "$hashes" ]; then
+                hashes="${hashes}|"
+            fi
+            hashes="${hashes}Hash-$algo: $hash"
             logDebug "Collected hash: Hash-$algo: $hash"
         fi
     done < "$tempOutput"
+    unset IFS
+
     rm -f "$tempOutput" "$tempError" 2>/dev/null
     logDebug "Completed testing algorithm $algo"
-    printf '%s\n' "$hashes" 2>/dev/null || {
+    printf '%s\n' "${hashes#\n}" 2>/dev/null || {
         logFatal "Failed to output hashes for algorithm $algo"
         return 1
     }
     return 0
 }
 
-
 # Run all algorithms for a test file
-# Usage: testAlgos <algoList> <testFileName> <fileSizeBytes> <rangeLine> <incrementLine> <testDirBase> <expectedFile>
 testAlgos() {
     algoList="${1:?Missing algoList}"
     testFileName="${2:?Missing testFileName}"
     fileSizeBytes="${3:?Missing fileSizeBytes}"
     testDirBase="${4:?Missing testDirBase}"
     expectedFile="${5:?Missing expectedFile}"
-    rangeLine="${6:-}"
-    incrementLine="${7:-}"
+    rangeSpec="${6:-}"
+    incrementSpec="${7:-}"
 
     results=""
     IFS=','
     for algoEntry in $algoList; do
-        # Trim whitespace
         algo=$(echo "$algoEntry" | sed 's/^ *//;s/ *$//')
         [ -z "$algo" ] && continue
-        # Determine rangeSpec for this test
-        rangeSpec=""
-        if [ -n "$rangeLine" ]; then
-            rangeSpec=$(echo "$rangeLine" | sed 's/^ *//;s/ *$//')
+        localRangeSpec=""
+        if [ -n "$rangeSpec" ]; then
+            localRangeSpec=$(echo "$rangeSpec" | sed 's/^ *//;s/ *$//')
         fi
-        # Call testAlgo for each algorithm-key pair
-        hashes=$(testAlgo "$algo" "$testFileName" "$fileSizeBytes" "$testDirBase" "$expectedFile" "$rangeSpec" "$incrementLine") || {
+        hashes=$(testAlgo "$algo" "$testFileName" "$fileSizeBytes" "$testDirBase" "$expectedFile" "$localRangeSpec" "$incrementSpec" | tr '\n' '|') || {
             logFatal "Algorithm $algo failed for file $testFileName"; return 1
         }
-        # Append results
-        results="$results\n$hashes"
+        logDebug "Gathered hashes for $algo: $hashes"
+        if [ -n "$results" ]; then
+            results="${results}|${hashes}"
+        else
+            results="${hashes}"
+        fi
     done
     unset IFS
-    # Output all results (trim leading newline)
+    logDebug "Gathered all hashes: ${results}"
     printf '%s\n' "${results#\n}"
     return 0
 }
 
 # Compare computed hashes to expected hashes
-# Usage: testHashes <testFileName> <algoList> <computedHashes> <expectedFile>
 testHashes() {
     testFileName="${1:?Missing testFileName}"
     algoList="${2:?Missing algoList}"
     computedHashes="${3:?Missing computedHashes}"
     expectedFile="${4:?Missing expectedFile}"
     anyFailed=0
-    IFS='
-'
+    IFS='|'
     for line in $computedHashes; do
         [ -z "$line" ] && continue
-        key=$(echo "$line" | cut -d':' -f1)
-        hash=$(echo "$line" | cut -d':' -f2- | xargs)
+        key=$(echo "$line" | awk -F': ' '{print $1}')
+        hash=$(echo "$line" | awk -F': ' '{for(i=2;i<=NF;i++) printf "%s%s", (i==2?"":": "), $i}')
         expected=""
         if [ -f "$expectedFile" ]; then
             logDebug "Key to look for: $key"
-            expected=$(grep "^$key:" "$expectedFile" | head -n1 | cut -d':' -f2- | xargs)
+            expected=$(grep "^$key: " "$expectedFile" | head -n1 | awk -F': ' '{for(i=2;i<=NF;i++) printf "%s%s", (i==2?"":": "), $i}')
         fi
         if [ -z "$expected" ]; then
-            # Do not log missing expected hashes and do not mark as failed
-            logDebug "Missing expected hash for $key"
+            logDebug "No expected hash for $key, skipping comparison"
             continue
-        else
-            logDebug "Found expected hash for $key: $expected"
         fi
+        logDebug "Found expected hash for $key: $expected"
         if [ "$hash" = "$expected" ]; then
             logInfo "${green}PASSED${reset} $key for $testFileName"
         else
@@ -577,31 +637,25 @@ testHashes() {
     return $anyFailed
 }
 
-
 # Remove temporary files for a test case
-# Usage: cleanupTestCase <testFileName> <algoList>
 cleanupTestCase() {
     testFileName="${1:?Missing testFileName}"
     algoList="${2:?Missing algoList}"
     if [ -n "${DEBUG:-}" ]; then
-        logDebug "DEBUG set: retaining temporary files for $testFileName ($algoList) for inspection."
+        logDebug "DEBUG set: retaining temporary files for $testFileName ($algoList)"
         return 0
     fi
-    # Remove any tmp.* files related to this test
     rm -f tmp.* 2>/dev/null
-    # Remove algorithm-specific temp files
     for algo in $algoList; do
         rm -f "tmp.*.$algo" "tmp.*.$algo.err" 2>/dev/null
     done
 }
 
 # Run single test case
-# Usage: runTestCase <testName> <testDirBase>
 runTestCase() {
     testName="${1:?Missing testName}"
     testDirBase="${2:?Missing testDirBase}"
 
-    # Change to the test case directory for all operations
     cd "$testDirBase" || (logFatal "Failed to cd to test case directory $testDirBase"; return 1)
 
     logInfo "${cyan}=== Running test: $testName ===${reset}"
@@ -616,7 +670,6 @@ runTestCase() {
     fi
     logDebug "Found expected file ${cyan}$expectedFile${reset}"
 
-    # Print Description if present
     descLine=$(grep '^Description:' "$testFile" 2>/dev/null || true)
     if [ -n "$descLine" ]; then
         logInfo "${descLine#Description: }"
@@ -638,36 +691,35 @@ runTestCase() {
     }
     testFileName=$(echo "$fileInfo" | cut -d' ' -f1)
     fileSizeBytes=$(echo "$fileInfo" | cut -d' ' -f2)
-    logDebug "Created file ${cyan}$testFileName${reset} with size $fileSizeBytes bytes"
+    logDebug "Using file ${cyan}$testFileName${reset} with size ${cyan}$fileSizeBytes${reset} bytes"
 
     algoInfo=$(parseAlgos "$testFile") || {
         logInfo "${red}FAILED${reset} Failed to parse algorithms from ${cyan}$testFile${reset}"
         return 1
     }
     algoList=$(echo "$algoInfo" | cut -d':' -f1)
-    rangeLine=$(echo "$algoInfo" | cut -d':' -f2)
-    incrementLine=$(echo "$algoInfo" | cut -d':' -f3-)
+    rangeSpec=$(echo "$algoInfo" | cut -d':' -f2)
+    incrementSpec=$(echo "$algoInfo" | cut -d':' -f3)
     logInfo "  ${yellow}Algorithms: $algoList${reset}"
-    logDebug "Parsed algo info: list=$algoList, range=$rangeLine, increment=$incrementLine"
+    logDebug "Parsed algo info: list=$algoList, range=$rangeSpec, increment=$incrementSpec"
 
-    computedHashes=$(testAlgos "$algoList" "$testFileName" "$fileSizeBytes" "$testDirBase" "$expectedFile" "$rangeLine" "$incrementLine") || {
+    computedHashes=$(testAlgos "$algoList" "$testFileName" "$fileSizeBytes" "$testDirBase" "$expectedFile" "$rangeSpec" "$incrementSpec") || {
         logInfo "${red}FAILED${reset} Algorithm execution for ${cyan}$testName${reset}"
         cleanupTestCase "$testFileName" "$algoList"
         return 1
     }
-    logDebug "Captured computed hashes for ${cyan}$testName${reset}"
+    logDebug "Captured computed hashes for test: ${cyan}$testName${reset}"
 
+    logDebug "About to compare computed hashes for test: ${cyan}$testName${reset}"
     if testHashes "$testFileName" "$algoList" "$computedHashes" "$expectedFile"; then
-        logDebug "Hash comparison or verification passed for ${cyan}$testName${reset}"
+        logDebug "Hash comparison passed for test: ${cyan}$testName${reset}"
         logInfo "${green}PASSED${reset} test: $testName"
         cleanupTestCase "$testFileName" "$algoList"
-        logDebug "Completed test case ${cyan}$testName${reset}"
         return 0
     else
         logInfo "${red}FAILED${reset} test: $testName"
-        logDebug "Hash comparison or verification failed for ${cyan}$testName${reset}"
+        logDebug "Hash comparison failed for test: ${cyan}$testName${reset}"
         cleanupTestCase "$testFileName" "$algoList"
-        logDebug "Completed test case ${cyan}$testName${reset}"
         return 1
     fi
 }
@@ -681,7 +733,6 @@ prepareTests() {
 }
 
 # Run all tests
-# shellcheck disable=SC2164
 runTests() {
     logInfo "Test Id: $testId"
     if [ "$testMode" = "file" ]; then
@@ -701,7 +752,7 @@ runTests() {
         mkdir -p "$testCaseDir" || (logFatal "Failed to create test case directory $testCaseDir"; return 1)
         logDebug "Processing test file ${cyan}$testFile${reset} (name: $testName)"
         if ! cp "$testDir/$testName.tst" "$testCaseDir/$testName.tst" 2>/dev/null; then
-            (logFatal "Failed to copy ${cyan}$testDir/$testName.tst${reset} to ${cyan}$testCaseDir${reset}"; return 1)
+            logFatal "Failed to copy ${cyan}$testDir/$testName.tst${reset} to ${cyan}$testCaseDir${reset}"
             failedTestCases=$((failedTestCases+1))
             totalTestCases=$((totalTestCases+1))
             continue
@@ -723,7 +774,6 @@ runTests() {
         totalTestCases=$((totalTestCases+1))
 
         logDebug "Finished test case $testName"
-        # If only running a single file, break after first
         if [ "$testMode" = "file" ]; then
             break
         fi
@@ -744,8 +794,11 @@ parseArgs() {
     if [ "${1:-}" = "-h" ]; then
         printUsage
     fi
-    testCaseOrDir="${1:-testcases}"
-    binary="${2:-gsum${exe}}"
+    scriptDir=$(getScriptDir)
+    logDebug "Script directory: $scriptDir"
+    testCaseOrDir="${1:-$scriptDir/testcases}"
+    logDebug "Test case or dir: $testCaseOrDir"
+    binary="${2:-$scriptDir/gsum${exe}}"
     [ "$#" -gt 2 ] && (logFatal "Too many arguments"; return 1)
     if [ -d "$testCaseOrDir" ]; then
         testMode="dir"
@@ -761,9 +814,6 @@ parseArgs() {
                 (logFatal "Argument must be a directory or a .tst file: $testCaseOrDir"; return 1)
                 ;;
         esac
-        testMode="file"
-        testFilePath="$testCaseOrDir"
-        testDir="$(dirname "$testFilePath")"
     else
         (logFatal "Argument must be a directory or a .tst file: $testCaseOrDir"; return 1)
     fi
@@ -795,8 +845,9 @@ main() {
     [ -n "${TRACE:-}" ] && set -x
     
     detectTerminalColors
-    testDirBase=$(getTestDir) || (logFatal "Failed to get test directory"; return 1)
+    checkEnvTools
     parseArgs "$@"
+    testDirBase=$(getTestDir) || (logFatal "Failed to get test directory"; return 1)
     prepareTests
     runTests
     printSummary    
