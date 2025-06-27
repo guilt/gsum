@@ -343,40 +343,25 @@ fillFile() {
         truncate -s 0 "$fileName" 2>/dev/null || touch "$fileName"
     fi
 
-    # Use printf for small files (<= 4096 bytes) for precision
-    if [ "$sizeBytes" -le 4096 ]; then
-        if [ "$decimalByte" -eq 0 ]; then
-            dd if=/dev/zero bs=1 count="$sizeBytes" of="$fileName" seek="$seekOffsetBytes" status=none 2>/dev/null || {
-                logFatal "Failed to fill file ${cyan}$fileName${reset}"; return 1
-            }
-        else
-            octalByte=$(printf "%03o" "$decimalByte")
-            dd if=/dev/zero bs=1 count="$sizeBytes" 2>/dev/null | tr '\0' "\\$octalByte" > "$fileName" || {
-                logFatal "Failed to fill file ${cyan}$fileName${reset}"; return 1
-            }
-        fi
+    # Use dd | tr for all files and truncate to final size
+    blockSize=4096
+    count=$(((sizeBytes + blockSize - 1) / blockSize))
+    octalByte=$(printf "%03o" "$decimalByte")
+    if [ "$decimalByte" -eq 0 ]; then
+        dd if=/dev/zero bs="$blockSize" count="$count" 2>/dev/null | \
+        dd of="$fileName" bs="$blockSize" seek=$((seekOffsetBytes / blockSize)) status=none 2>/dev/null || {
+            logFatal "Failed to fill file ${cyan}$fileName${reset}"; return 1
+        }
     else
-        # Use dd | tr for larger files
-        LC_ALL=C
-        blockSize=4096
-        count=$(((sizeBytes + blockSize - 1) / blockSize))
-        octalByte=$(printf "%03o" "$decimalByte")
-        if [ "$decimalByte" -eq 0 ]; then
-            dd if=/dev/zero bs="$blockSize" count="$count" 2>/dev/null | \
-            dd of="$fileName" bs="$blockSize" seek=$((seekOffsetBytes / blockSize)) status=none 2>/dev/null || {
-                logFatal "Failed to fill file ${cyan}$fileName${reset}"; return 1
-            }
-        else
-            dd if=/dev/zero bs="$blockSize" count="$count" 2>/dev/null | \
-            tr '\0' "\\$octalByte" | \
-            dd of="$fileName" bs="$blockSize" seek=$((seekOffsetBytes / blockSize)) status=none 2>/dev/null || {
-                logFatal "Failed to fill file ${cyan}$fileName${reset}"; return 1
-            }
-        fi
-        truncate -s $((seekOffsetBytes + sizeBytes)) "$fileName" 2>/dev/null || {
-            logFatal "Failed to truncate ${cyan}$fileName${reset} to $((seekOffsetBytes + sizeBytes)) bytes"; return 1
+        dd if=/dev/zero bs="$blockSize" count="$count" 2>/dev/null | \
+        LC_ALL=C tr '\0' "\\$octalByte" | \
+        dd of="$fileName" bs="$blockSize" seek=$((seekOffsetBytes / blockSize)) status=none 2>/dev/null || {
+            logFatal "Failed to fill file ${cyan}$fileName${reset}"; return 1
         }
     fi
+    truncate -s $((seekOffsetBytes + sizeBytes)) "$fileName" 2>/dev/null || {
+        logFatal "Failed to truncate ${cyan}$fileName${reset} to $((seekOffsetBytes + sizeBytes)) bytes"; return 1
+    }
 
     # Verify file contents at the correct offset
     if [ -f "$fileName" ] && [ "$sizeBytes" -gt 0 ]; then
